@@ -306,7 +306,7 @@ async function onAuth(user){
     if(!p.exists){loginErr="Tento účet byl zrušen nebo nemá přístup.";await auth.signOut();return}
     var mine=await loadUserFull(p);DB.users=[mine];
     if(mine.isAdmin){var all=await fs.collection("users").get();DB.users=await Promise.all(all.docs.map(loadUserFull))}
-    session=user.uid;render();
+    session=user.uid;render();autoRefresh();scheduleHourly();
   }catch(e){renderMsg("Chyba načítání",esc(errText(e))+'<br><br><button class="act" onclick="location.reload()">Zkusit znovu</button>')}
 }
 function logout(){if(DEMO){location.href=location.pathname;return}auth.signOut()}
@@ -314,7 +314,7 @@ function logout(){if(DEMO){location.href=location.pathname;return}auth.signOut()
 /* ---------- main view ---------- */
 function renderMain(){
   var m=me(),u=viewed();
-  var h='<div class="topbar"><span class="who">Přihlášen: <b>'+esc(m.username)+'</b>'+(m.isAdmin?' · správce':'')+'</span>'+
+  var h='<div class="topbar"><span class="who" id="lastUpd">'+esc(lastUpd)+'</span><span class="who">Přihlášen: <b>'+esc(m.username)+'</b>'+(m.isAdmin?' · správce':'')+'</span>'+
     (m.isAdmin?'<button class="chip" data-a="admin">Správa účtů</button>':'')+'<button class="chip" data-a="pw">Změnit heslo</button><button class="chip" data-a="logout">Odhlásit</button></div>';
   if(u!==m)h+='<div class="banner"><span>Prohlížíte účet <b>'+esc(u.username)+'</b></span><button class="chip" data-a="back">Zpět na můj účet</button></div>';
   h+=sceneHTML(stand(u,"robot"),stand(u,"manual"));
@@ -447,10 +447,10 @@ function renderPw(){
 
 /* ---------- import parsing ---------- */
 function toNum(s){if(s==null)return NaN;s=String(s).replace(/[\s $]/g,"");if(/^-?[\d.]*,\d+$/.test(s))s=s.replace(/\./g,"").replace(",",".");else s=s.replace(/,/g,"");return parseFloat(s)}
-function toDate(s){
+function toDate(s,mf){
   s=String(s||"").trim();if(!s)return null;var m;
   if(m=s.match(/^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/))return new Date(+m[1],m[2]-1,+m[3],+(m[4]||0),+(m[5]||0),+(m[6]||0));
-  if(m=s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/))return new Date(+m[3],m[2]-1,+m[1],+(m[4]||0),+(m[5]||0),+(m[6]||0));
+  if(m=s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/))return mf?new Date(+m[3],m[1]-1,+m[2],+(m[4]||0),+(m[5]||0),+(m[6]||0)):new Date(+m[3],m[2]-1,+m[1],+(m[4]||0),+(m[5]||0),+(m[6]||0));
   if(m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/))return new Date(+m[3],m[1]-1,+m[2],+(m[4]||0),+(m[5]||0),+(m[6]||0));
   var d=new Date(s);return isNaN(d)?null:d;
 }
@@ -462,10 +462,11 @@ function rowsFromText(txt){
   return lines.map(function(l){var r=[],cur="",q=false;for(var i=0;i<l.length;i++){var c=l[i];if(c==='"'){q=!q;continue}if(c===d&&!q){r.push(cur.trim());cur="";continue}cur+=c}r.push(cur.trim());return r});
 }
 function parseTrades(txt){
-  var rows=rowsFromText(txt),res=[],col=null;
+  var rows=rowsFromText(txt),res=[],col=null,mf=false;
+  rows.forEach(function(r){r.forEach(function(c){var m=String(c).match(/^(\d{1,2})\.(\d{1,2})\.\d{4}/);if(m){if(+m[2]>12)mf=true;}})});
   for(var i=0;i<rows.length;i++){
     var r=rows[i],low=r.map(function(c){return c.toLowerCase()});
-    if(low.some(function(c){return /^(profit|zisk|net profit|p\/l)$/.test(c)})&&low.some(function(c){return /time|date|datum|čas/.test(c)})){
+    if(low.some(function(c){return /^(profit|zisk|net profit|p\/l|pips?)$/.test(c)})&&low.some(function(c){return /time|date|datum|čas/.test(c)})&&low.length>=4){
       col={time:[],price:[]};
       low.forEach(function(c,j){
         if(/close.?(time|date)|čas uzav/.test(c))col.close=j;
@@ -487,15 +488,18 @@ function parseTrades(txt){
       continue;
     }
     if(!col)continue;
-    var profit=toNum(r[col.profit]);if(!isFinite(profit))continue;
     var type=col.type!=null?String(r[col.type]||"").toLowerCase():"";
     if(col.type!=null&&!/buy|sell|nákup|prodej/.test(type))continue;
     if(col.sym!=null&&!/xau|gold/i.test(r[col.sym]||""))continue;
-    var dt=toDate(r[col.close]);if(!dt)continue;
-    if(col.comm!=null&&isFinite(toNum(r[col.comm])))profit+=toNum(r[col.comm]);
-    if(col.swap!=null&&isFinite(toNum(r[col.swap])))profit+=toNum(r[col.swap]);
+    var dt=toDate(r[col.close],mf);if(!dt)continue;
     var lots=col.vol!=null?toNum(r[col.vol]):0,pips=col.pips!=null?toNum(r[col.pips]):NaN;
-    if(!isFinite(pips)&&col.oprice!=null&&col.cprice!=null){var op=toNum(r[col.oprice]),cp=toNum(r[col.cprice]);if(isFinite(op)&&isFinite(cp))pips=(cp-op)*(/sell|prodej/.test(type)?-1:1)/0.1}
+    if(!isFinite(pips)&&col.oprice!=null&&col.cprice!=null){var op=toNum(r[col.oprice]),cp=toNum(r[col.cprice]);if(isFinite(op)&&isFinite(cp))pips=(cp-op)*(/sell|prodej/.test(type)?-1:1)/0.01}
+    var profit=col.profit!=null?toNum(r[col.profit]):NaN;
+    if(isFinite(profit)){
+      if(col.comm!=null&&isFinite(toNum(r[col.comm])))profit+=toNum(r[col.comm]);
+      if(col.swap!=null&&isFinite(toNum(r[col.swap])))profit+=toNum(r[col.swap]);
+    }else if(isFinite(pips)&&isFinite(lots)&&lots>0){profit=pips*lots}  /* zisk skrytý: u zlata 1 pip × 1 lot = 1 USD */
+    else continue;
     res.push({t:dt.toISOString(),side:/sell|prodej/.test(type)?"sell":"buy",lots:isFinite(lots)?lots:0,pips:isFinite(pips)?Math.round(pips*10)/10:0,profit:Math.round(profit*100)/100});
   }
   return res;
@@ -578,18 +582,44 @@ async function adminClick(e){
   if(x==="fetch"){var sd=val("iSide"),url=sd==="robot"?sel.settings.robotUrl:sel.settings.manualUrl;if(!url){msg("Pro tento stojánek není zadaný odkaz.");return}
     msg("Načítám…");try{var r=await fetch(url);if(!r.ok)throw new Error(r.status);await applyImport(sel,await r.text())}catch(err){msg("Stránku se nepodařilo načíst. Server odkazu nepovoluje čtení z jiné stránky. Otevřete odkaz, uložte export a nahrajte ho jako soubor.")}}
 }
+async function fetchTrades(url){
+  var r=await fetch(url+(url.indexOf("?")>-1?"&":"?")+"_="+Date.now(),{cache:"no-store"});
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  return parseTrades(await r.text());
+}
+/* Obchody načtené z odkazu se neukládají do databáze – při každém otevření a každou celou hodinu se načtou znovu. */
 async function refreshFrom(sel,side,url){
-  var txt;
-  try{var r=await fetch(url,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);txt=await r.text()}
-  catch(err){return {ok:false,msg:"Odkaz se nepodařilo načíst automaticky. Web odkazu (např. Myfxbook) nepovoluje čtení z jiné stránky. Stáhněte export obchodů a nahrajte ho v části Obchody."}}
-  var t=parseTrades(txt);
-  if(!t.length)return {ok:false,msg:"Stránka se načetla, ale nejsou v ní žádné obchody XAUUSD v tabulce s časem a ziskem (Profit)."};
-  var before=sel.trades[side].length;
-  if(document.getElementById("iRepl").checked)sel.trades[side]=t;
-  else{var seen={};sel.trades[side].forEach(function(o){seen[o.t+"|"+o.profit+"|"+o.lots]=1});t.forEach(function(o){if(!seen[o.t+"|"+o.profit+"|"+o.lots])sel.trades[side].push(o)})}
-  await persistTrades(sel,side);renderAdmin();renderMain();
-  var m="Aktualizováno ("+(side==="robot"?"robot":"manuál")+"): "+sel.trades[side].length+" obchodů, dříve "+before+".";
+  var t;
+  try{t=await fetchTrades(url)}
+  catch(err){return {ok:false,msg:"Odkaz se nepodařilo načíst automaticky. Web odkazu (např. Myfxbook) nepovoluje čtení z jiné stránky. Použijte odkaz na soubor s obchody v repozitáři, nebo nahrajte export v části Obchody."}}
+  if(!t.length)return {ok:false,msg:"Odkaz se načetl, ale nejsou v něm žádné obchody XAUUSD v tabulce s časem a ziskem nebo pipy."};
+  var before=sel.trades[side].length;sel.trades[side]=t;
+  stampUpd();renderAdmin();renderMain();
+  var m="Aktualizováno ("+(side==="robot"?"robot":"manuál")+"): "+t.length+" obchodů, dříve "+before+".";
   msg(m);toast(m);return {ok:true};
+}
+var lastUpd="",hourTimer=null;
+function stampUpd(){var d=new Date();lastUpd="Data aktualizována "+pad(d.getHours())+":"+pad(d.getMinutes());var el=document.getElementById("lastUpd");if(el)el.textContent=lastUpd}
+async function autoRefresh(){
+  if(DEMO||!session)return;
+  var cache={},changed=false,any=false;
+  for(var i=0;i<DB.users.length;i++){var u=DB.users[i];
+    for(var side of ["robot","manual"]){
+      var url=(side==="robot"?u.settings.robotUrl:u.settings.manualUrl)||"";
+      if(!/^https?:\/\//i.test(url))continue;
+      if(!(url in cache)){try{cache[url]=await fetchTrades(url)}catch(e){cache[url]=null}}
+      var t=cache[url];if(!t||!t.length)continue;any=true;
+      var cur=u.trades[side]||[];
+      if(cur.length===t.length&&cur.length&&cur[cur.length-1].t===t[t.length-1].t)continue;
+      u.trades[side]=t;changed=true;
+    }}
+  if(any)stampUpd();
+  if(changed&&session){renderMain();if(adminOpen)renderAdmin()}
+}
+function scheduleHourly(){
+  clearTimeout(hourTimer);
+  var now=new Date(),next=new Date(now);next.setHours(now.getHours()+1,0,5,0);
+  hourTimer=setTimeout(function(){autoRefresh();scheduleHourly()},next-now);
 }
 async function applyImport(sel,txt){
   var side=val("iSide"),t=parseTrades(txt);
