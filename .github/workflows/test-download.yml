@@ -7,16 +7,22 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Stáhnout statement.pdf
+      - name: Stáhnout statement.html
         run: |
           set +e
+          URL=https://www.myfxbook.com/statements/12034345/statement.html
           for ua in "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36" "curl/8"; do
-            curl -sS -L -m 60 -A "$ua" -H "Accept: application/pdf,*/*" \
-              -o st.pdf -w "UA=${ua:0:20} http=%{http_code} type=%{content_type} size=%{size_download}\n" \
-              https://www.myfxbook.com/statements/12034345/statement.pdf
-            echo "prvni bajty: $(head -c 8 st.pdf | tr -dc '[:print:]')"
+            curl -sS -L -m 60 -A "$ua" -H "Accept: text/html,*/*" -H "Origin: https://golden-dave.github.io" \
+              -D hdr.txt -o st.html \
+              -w "UA=${ua:0:20} http=%{http_code} type=%{content_type} size=%{size_download}\n" "$URL"
+            echo "CORS hlavicka: $(grep -i '^access-control-allow-origin' hdr.txt || echo 'zadna')"
+            echo "titulek: $(grep -o '<title>[^<]*' st.html | head -1)"
           done
           python3 - <<'PY'
-          d=open('st.pdf','rb').read()
-          print('PDF OK' if d[:5]==b'%PDF-' else 'NENI PDF: '+d[:300].decode('latin1'))
+          import re
+          d=open('st.html',encoding='utf-8',errors='replace').read()
+          heads=re.findall(r'<t[hd][^>]*>\s*(Open Date|Close Date|Symbol|Action|Lots|Pips|Profit|Time|Type|Volume)\s*</t[hd]>',d,re.I)
+          print('Nalezene hlavicky tabulky:',sorted(set(h.lower() for h in heads)))
+          print('Pocet radku tabulky:',d.count('<tr'))
+          print('Zmínek XAUUSD:',len(re.findall('XAUUSD',d,re.I)))
           PY
