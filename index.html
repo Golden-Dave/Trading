@@ -119,7 +119,11 @@ input[type=range]{width:100%;accent-color:var(--c)}
 .admin{max-width:1100px;margin:0 auto;border:2px solid var(--gold);border-radius:24px;background:#070913;box-shadow:0 0 30px rgba(255,190,40,.25);padding:20px}
 .admin h3{margin:0;font-family:var(--f-display);font-size:26px;color:var(--gold)}
 .admin h4{margin:18px 0 8px;font-family:var(--f-display);font-size:18px;color:var(--fg)}
-.admin label.f{font-size:13px}
+.admin .f{font-size:13px}
+div.f{display:flex;flex-direction:column;gap:.3em;font-size:.82em;color:var(--muted);font-weight:700;min-width:0}
+.lrow{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:26px}
+.act.mini{padding:3px 10px;font-size:12px;border-radius:8px}
+.act:disabled{opacity:.6;cursor:wait}
 .agrid{display:grid;grid-template-columns:260px minmax(0,1fr);gap:20px;margin-top:14px}
 @media (max-width:780px){.agrid{grid-template-columns:1fr}}
 .ulist{display:flex;flex-direction:column;gap:6px}
@@ -521,8 +525,8 @@ function renderAdmin(){
     '<label class="f">Počáteční kapitál (USD)<input type="number" step="any" min="0" id="eCap" value="'+esc(S.capital)+'" required></label>'+
     '<label class="f">Koeficient ziskových obchodů<input type="number" step="any" min="0" id="eCoef" value="'+esc(S.coef)+'" required></label>'+
     '<div></div>'+
-    '<label class="f">Odkaz – Robotické obchodování<input type="url" id="eRU" value="'+esc(S.robotUrl)+'" placeholder="https://…"></label>'+
-    '<label class="f">Odkaz – Manuální obchodování<input type="url" id="eMU" value="'+esc(S.manualUrl)+'" placeholder="https://…"></label>'+
+    '<div class="f"><span class="lrow"><label for="eRU">Odkaz – Robotické obchodování</label><button type="button" class="act mini" data-x="upd" data-side="robot">Aktualizovat</button></span><input type="url" id="eRU" value="'+esc(S.robotUrl)+'" placeholder="https://…"></div>'+
+    '<div class="f"><span class="lrow"><label for="eMU">Odkaz – Manuální obchodování</label><button type="button" class="act mini" data-x="upd" data-side="manual">Aktualizovat</button></span><input type="url" id="eMU" value="'+esc(S.manualUrl)+'" placeholder="https://…"></div>'+
     '<label class="f">Aktuální stav – robot (USD, ručně)<input type="number" step="any" id="eRB" value="'+esc(S.robotBalance)+'" placeholder="nezadáno"></label>'+
     '<label class="f">Aktuální stav – manuál (USD, ručně)<input type="number" step="any" id="eMB" value="'+esc(S.manualBalance)+'" placeholder="nezadáno"></label>'+
    '</div><p class="hint">Koeficient 0,8 znamená, že se ze ziskového obchodu započítá 80 %. Ztrátové obchody se počítají celé. Heslo si uživatel mění sám tlačítkem Změnit heslo.</p><div class="row" style="margin-top:10px"><button class="act">Uložit nastavení</button></div></form>'+
@@ -560,8 +564,32 @@ async function adminClick(e){
     renderAdmin();renderMain();toast("Obnoveno účtů: "+ok+(miss.length?". Nenalezeno: "+miss.join(", "):""));return}
   if(x==="demo"){var side2=val("iSide");sel.trades[side2]=demoTrades(side2==="robot"?7:19,side2==="robot"?.66:.58);await persistTrades(sel,side2);renderAdmin();renderMain();toast("Ukázková data vložena.");return}
   if(x==="imp"){var f=document.getElementById("iFile").files[0],txt=val("iTxt");if(f)txt=await f.text();if(!txt.trim()){msg("Vyberte soubor nebo vložte obsah.");return}return applyImport(sel,txt)}
+  if(x==="upd"){
+    var us=b.dataset.side,uu=val(us==="robot"?"eRU":"eMU").trim();
+    if(!/^https?:\/\//i.test(uu)){toast("Nejdřív zadejte odkaz začínající https://");return}
+    if(sel.settings[us==="robot"?"robotUrl":"manualUrl"]!==uu){sel.settings[us==="robot"?"robotUrl":"manualUrl"]=uu;persistSettings(sel)}
+    document.getElementById("iSide").value=us;
+    var lbl=b.textContent;b.disabled=true;b.textContent="Načítám…";
+    var res=await refreshFrom(sel,us,uu);
+    b.disabled=false;b.textContent=lbl;
+    if(!res.ok){msg(res.msg);toast(res.msg);var t=document.getElementById("iMsg");if(t)t.scrollIntoView({behavior:"smooth",block:"center"})}
+    return;
+  }
   if(x==="fetch"){var sd=val("iSide"),url=sd==="robot"?sel.settings.robotUrl:sel.settings.manualUrl;if(!url){msg("Pro tento stojánek není zadaný odkaz.");return}
     msg("Načítám…");try{var r=await fetch(url);if(!r.ok)throw new Error(r.status);await applyImport(sel,await r.text())}catch(err){msg("Stránku se nepodařilo načíst. Server odkazu nepovoluje čtení z jiné stránky. Otevřete odkaz, uložte export a nahrajte ho jako soubor.")}}
+}
+async function refreshFrom(sel,side,url){
+  var txt;
+  try{var r=await fetch(url,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);txt=await r.text()}
+  catch(err){return {ok:false,msg:"Odkaz se nepodařilo načíst automaticky. Web odkazu (např. Myfxbook) nepovoluje čtení z jiné stránky. Stáhněte export obchodů a nahrajte ho v části Obchody."}}
+  var t=parseTrades(txt);
+  if(!t.length)return {ok:false,msg:"Stránka se načetla, ale nejsou v ní žádné obchody XAUUSD v tabulce s časem a ziskem (Profit)."};
+  var before=sel.trades[side].length;
+  if(document.getElementById("iRepl").checked)sel.trades[side]=t;
+  else{var seen={};sel.trades[side].forEach(function(o){seen[o.t+"|"+o.profit+"|"+o.lots]=1});t.forEach(function(o){if(!seen[o.t+"|"+o.profit+"|"+o.lots])sel.trades[side].push(o)})}
+  await persistTrades(sel,side);renderAdmin();renderMain();
+  var m="Aktualizováno ("+(side==="robot"?"robot":"manuál")+"): "+sel.trades[side].length+" obchodů, dříve "+before+".";
+  msg(m);toast(m);return {ok:true};
 }
 async function applyImport(sel,txt){
   var side=val("iSide"),t=parseTrades(txt);
