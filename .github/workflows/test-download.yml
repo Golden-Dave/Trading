@@ -1,0 +1,22 @@
+name: Test stažení výpisu
+on:
+  push:
+    paths: [".github/workflows/test-download.yml"]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stáhnout statement.pdf
+        run: |
+          set +e
+          for ua in "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36" "curl/8"; do
+            curl -sS -L -m 60 -A "$ua" -H "Accept: application/pdf,*/*" \
+              -o st.pdf -w "UA=${ua:0:20} http=%{http_code} type=%{content_type} size=%{size_download}\n" \
+              https://www.myfxbook.com/statements/12034345/statement.pdf
+            echo "prvni bajty: $(head -c 8 st.pdf | tr -dc '[:print:]')"
+          done
+          python3 - <<'PY'
+          d=open('st.pdf','rb').read()
+          print('PDF OK' if d[:5]==b'%PDF-' else 'NENI PDF: '+d[:300].decode('latin1'))
+          PY
