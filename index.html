@@ -240,13 +240,24 @@ function stats(u,side){
   var share=side==="robot"?+T.robotPct:100-T.robotPct;
   var base=(+S.capital||0)*share/100;
   var start=new Date(S.start).getTime()||0,coef=+S.coef;if(!isFinite(coef))coef=1;
-  var tr=(u.trades[side]||[]).filter(function(t){return new Date(t.t).getTime()>=start}).sort(function(a,b){return new Date(a.t)-new Date(b.t)})
-    .map(function(t){return Object.assign({},t,{adj:t.profit>0?t.profit*coef:t.profit})});
+  var tr=(u.trades[side]||[]).filter(function(t){return new Date(t.t).getTime()>=start}).sort(function(a,b){return new Date(a.t)-new Date(b.t)});
+  var pctMode=tr.length>0&&tr.every(function(t){return typeof t.pct==="number"&&isFinite(t.pct)});
+  if(pctMode){
+    /* Procentní režim: každý obchod nese % výnosu zdrojového účtu (vůči zůstatku na začátku dne).
+       Stejná % se uplatní na peníze uživatele: v rámci dne se sčítají, mezi dny se úročí. */
+    var eq=base,dayStart=base,dk="";
+    tr=tr.map(function(t){var d=new Date(t.t),k=d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate();
+      if(k!==dk){dk=k;dayStart=eq}
+      var a=t.pct>0?t.pct*coef:t.pct,adj=dayStart*a/100;eq+=adj;
+      return Object.assign({},t,{srcProfit:t.profit,profit:dayStart*t.pct/100,adj:adj})});
+  }else{
+    tr=tr.map(function(t){return Object.assign({},t,{adj:t.profit>0?t.profit*coef:t.profit})});
+  }
   var pnl=0,w=0,l=0;tr.forEach(function(t){pnl+=t.adj;if(t.profit>0)w++;else if(t.profit<0)l++});
   var wd=(T.withdrawals||[]).filter(function(x){return x.side===side}).reduce(function(a,x){return a+(+x.amount||0)},0);
   var mb=side==="robot"?S.robotBalance:S.manualBalance;
   return {base:base,share:share,trades:tr,pnl:pnl,wins:w,losses:l,wd:wd,current:base+pnl-wd,
-    winrate:tr.length?w/tr.length*100:NaN,coef:coef,start:start,manualBal:mb===""||mb==null?null:+mb};
+    winrate:tr.length?w/tr.length*100:NaN,coef:coef,start:start,pctMode:pctMode,manualBal:mb===""||mb==null?null:+mb};
 }
 function periodStart(d,per){
   var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());
@@ -364,7 +375,7 @@ function viewInv(u,side,st){
    tile("Aktuální PnL",'<span class="'+cls(st.pnl)+'">'+usd(st.pnl,true)+'</span>',pct(st.base?st.pnl/st.base*100:NaN,true))+
    tile("Winrate",isFinite(st.winrate)?num(st.winrate,1)+" %":"—",st.wins+" ziskových · "+st.losses+" ztrátových")+
    (mb!=null?tile("Skutečný zůstatek (zadaný ručně)",usd(mb),"rozdíl proti výpočtu "+usd(mb-st.current,true),true):"")+
-   '</div><p class="note">Vyhodnocuje se od '+dmy(sd)+' '+pad(sd.getHours())+':'+pad(sd.getMinutes())+'. Ziskové obchody se násobí koeficientem '+num(st.coef,2)+', ztrátové se počítají celé.</p>';
+   '</div><p class="note">Vyhodnocuje se od '+dmy(sd)+' '+pad(sd.getHours())+':'+pad(sd.getMinutes())+'. '+(st.pctMode?'Výsledky jsou procentní výnos zdrojového účtu přepočtený na vaši investici. ':'')+'Ziskové obchody se násobí koeficientem '+num(st.coef,2)+', ztrátové se počítají celé.</p>';
 }
 function viewGraf(u,side,st){
   var s=ui[side];
@@ -525,6 +536,7 @@ function parseTrades(txt){
         if(/^pips?$/.test(c))col.pips=j;
         if(/^(profit|zisk|net profit|p\/l)$/.test(c))col.profit=j;
         if(/commission|komise|provize/.test(c))col.comm=j;
+        if(/^(pct|gain %?|výnos %?)$/.test(c))col.pct=j;
         if(/^swap/.test(c))col.swap=j;
         if(/close.?price/.test(c))col.cprice=j;else if(/open.?price/.test(c))col.oprice=j;else if(/^price$|^cena$/.test(c))col.price.push(j);
       });
@@ -547,7 +559,7 @@ function parseTrades(txt){
       if(col.swap!=null&&isFinite(toNum(r[col.swap])))profit+=toNum(r[col.swap]);
     }else if(isFinite(pips)&&isFinite(lots)&&lots>0){profit=pips*lots}  /* zisk skrytý: u zlata 1 pip × 1 lot = 1 USD */
     else continue;
-    res.push({t:dt.toISOString(),side:/sell|prodej/.test(type)?"sell":"buy",lots:isFinite(lots)?lots:0,pips:isFinite(pips)?Math.round(pips*10)/10:0,profit:Math.round(profit*100)/100});
+    res.push({t:dt.toISOString(),side:/sell|prodej/.test(type)?"sell":"buy",lots:isFinite(lots)?lots:0,pips:isFinite(pips)?Math.round(pips*10)/10:0,profit:Math.round(profit*100)/100,pct:col.pct!=null&&r[col.pct]!==""?toNum(r[col.pct]):undefined});
   }
   return res;
 }

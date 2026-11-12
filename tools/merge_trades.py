@@ -10,7 +10,7 @@ Vypíše počet přidaných obchodů; při chybě skončí s nenulovým kódem a
 import sys, csv, os
 
 CSV = os.path.join(os.path.dirname(__file__), '..', 'data', 'gold-evolution.csv')
-HEADER = ['Open Date', 'Close Date', 'Symbol', 'Action', 'Lots', 'Pips', 'Profit']
+HEADER = ['Open Date', 'Close Date', 'Symbol', 'Action', 'Lots', 'Pips', 'Profit', 'Pct']  # Pct doplní tools/enrich.py
 
 
 def h36(s):
@@ -67,7 +67,7 @@ def main(path, target=None):
             added += extra
     out = sorted(rows, key=lambda r: (r['Close Date'], r['Open Date']))
     with open(CSV, 'w', encoding='utf-8', newline='') as f:
-        w = csv.DictWriter(f, fieldnames=HEADER, lineterminator='\n')
+        w = csv.DictWriter(f, fieldnames=HEADER, lineterminator='\n', restval='', extrasaction='ignore')
         w.writeheader()
         w.writerows(out)
     print(f'Přidáno {added} obchodů, celkem {len(rows)}.')
