@@ -60,6 +60,26 @@ button{cursor:pointer}
 .shead h2{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(14px,calc(var(--u)*30),30px);color:#fff;text-shadow:0 0 10px var(--c),0 0 2px var(--hi);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .src{font-size:clamp(11px,calc(var(--u)*17),15px);color:var(--hi);text-decoration:none;border-bottom:1px dashed currentColor;white-space:nowrap}
 .src:hover{color:#fff}
+button.src{background:none;border:0;border-bottom:1px dashed currentColor;padding:0;cursor:pointer;font:inherit;font-size:clamp(11px,calc(var(--u)*17),15px)}
+.tl{position:fixed;inset:0;z-index:40;background:rgba(2,3,9,.82);display:flex;align-items:center;justify-content:center;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.tlbox{--c:var(--blue);--hi:var(--blue-hi);width:min(860px,100%);max-height:100%;display:flex;flex-direction:column;border:2px solid var(--hi);border-radius:22px;background:#04060f;
+  box-shadow:0 0 14px var(--c),0 0 40px color-mix(in srgb,var(--c) 50%,transparent),inset 0 0 30px color-mix(in srgb,var(--c) 22%,transparent)}
+.tlbox.manual{--c:var(--orange);--hi:var(--orange-hi)}
+.tlhead{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px 10px}
+.tlhead h3{margin:0;font-family:var(--f-display);font-size:22px;color:#fff;text-shadow:0 0 10px var(--c)}
+.tlx{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.06);font-size:20px;line-height:1;color:var(--fg)}
+.tlx:hover{border-color:var(--hi);color:var(--hi)}
+.tlsum{display:flex;flex-wrap:wrap;gap:6px 18px;padding:0 18px 10px;font-size:13px;color:var(--muted)}
+.tlsum b{color:var(--fg);font-family:var(--f-mono);font-weight:600}
+.tlsum b.pos{color:var(--win)}.tlsum b.neg{color:var(--loss)}
+.tlscroll{overflow:auto;padding:0 18px;min-height:0}
+.tlt{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.tlt th{position:sticky;top:0;background:#04060f;text-align:right;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:8px 8px;border-bottom:1px solid var(--line)}
+.tlt td{text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06);font-family:var(--f-mono);white-space:nowrap}
+.tlt th:first-child,.tlt td:first-child,.tlt th:nth-child(2),.tlt td:nth-child(2){text-align:left}
+.tlt tr:hover td{background:rgba(255,255,255,.04)}
+.tlfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 18px 14px;font-size:12.5px;color:var(--muted)}
 .content{flex:1;min-height:0;min-width:0;font-size:clamp(11px,calc(var(--u)*19),18px);line-height:1.35}
 
 /* painted orbs become buttons */
@@ -327,7 +347,7 @@ function stand(u,side){
   var st=stats(u,side),s=ui[side],url=side==="robot"?u.settings.robotUrl:u.settings.manualUrl;
   var tabs=[["inv","Investice"],["graf","Graf"],["obch","Obchod"],["prev","Převod"]];
   var body={inv:viewInv,graf:viewGraf,obch:viewObch,prev:viewPrev}[s.tab](u,side,st);
-  var head='<h2>'+(side==="robot"?"Robotické obchodování":"Manuální obchodování")+'</h2>'+(/^https?:\/\//i.test(url)?'<a class="src" href="'+esc(url)+'" target="_blank" rel="noopener">Zdroj ↗</a>':'');
+  var head='<h2>'+(side==="robot"?"Robotické obchodování":"Manuální obchodování")+'</h2>'+(/^https?:\/\//i.test(url)||st.trades.length?'<button type="button" class="src" data-a="list" data-side="'+side+'">Zdroj</button>':'');
   var btns='<div class="btns">'+tabs.map(function(t,i){return '<button class="hot h'+i+'" data-side="'+side+'" data-tab="'+t[0]+'" aria-pressed="'+(s.tab===t[0])+'" aria-label="'+t[1]+'" title="'+t[1]+'"><span class="ring"></span></button>'}).join("")+'</div>';
   return shell(side,head,body,btns);
 }
@@ -418,6 +438,26 @@ function slHint(T,cap){
   return p.length?"Max. ztráta: "+p.join(" · "):"";
 }
 
+/* ---------- trade list window ---------- */
+var tlState=null,tlEl=null;
+function closeList(){tlState=null;if(tlEl){tlEl.remove();tlEl=null}document.removeEventListener("keydown",tlKey)}
+function tlKey(e){if(e.key==="Escape")closeList()}
+function renderList(){
+  if(!tlState)return;var u=viewed();if(!u)return closeList();
+  var side=tlState.side,st=stats(u,side),list=st.trades.slice().reverse(),shown=list.slice(0,tlState.n);
+  var sd=new Date(st.start);
+  var rows=shown.map(function(t){var d=new Date(t.t);
+    return '<tr><td>'+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+'</td><td>'+(t.side==="sell"?"Sell":"Buy")+'</td><td>'+num(+t.lots||0,2)+'</td><td class="'+cls(t.pips)+'">'+(t.pips>0?"+":"")+num(+t.pips||0,1)+'</td><td class="'+cls(t.profit)+'">'+usd(t.profit,true)+'</td><td class="'+cls(t.adj)+'">'+usd(t.adj,true)+'</td></tr>'}).join("");
+  if(!tlEl){tlEl=document.createElement("div");tlEl.className="tl";document.body.appendChild(tlEl);
+    tlEl.addEventListener("click",function(e){if(e.target===tlEl||e.target.closest("[data-tl=close]"))return closeList();if(e.target.closest("[data-tl=more]")){tlState.n+=500;renderList()}});
+    document.addEventListener("keydown",tlKey)}
+  tlEl.innerHTML='<div class="tlbox '+side+'" role="dialog" aria-modal="true" aria-label="Výpis obchodů"><div class="tlhead"><h3>Výpis obchodů – '+(side==="robot"?"robotické":"manuální")+' obchodování</h3><button type="button" class="tlx" data-tl="close" aria-label="Zavřít">×</button></div>'+
+   '<div class="tlsum"><span>Obchodů <b>'+list.length+'</b></span><span>Ziskových <b>'+st.wins+'</b></span><span>Ztrátových <b>'+st.losses+'</b></span><span>PnL <b class="'+cls(st.pnl)+'">'+usd(st.pnl,true)+'</b></span><span>Od <b>'+dmy(sd)+'</b></span></div>'+
+   (list.length?'<div class="tlscroll"><table class="tlt"><thead><tr><th>Zavřeno</th><th>Směr</th><th>Loty</th><th>Pipy</th><th>Zisk</th><th>Započteno</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="tlscroll"><div class="empty">Od nastaveného data zatím nejsou žádné obchody.</div></div>')+
+   '<div class="tlfoot"><span>Nejnovější nahoře. Započteno = zisk × '+num(st.coef,2)+', ztráty celé.'+(shown.length<list.length?' Zobrazeno '+shown.length+' z '+list.length+'.':'')+'</span>'+
+   (shown.length<list.length?'<button type="button" class="act ghost" data-tl="more">Zobrazit další</button>':'')+'<button type="button" class="act" data-tl="close">Zavřít</button></div></div>';
+  var x=tlEl.querySelector(".tlx");if(x)x.focus();
+}
 /* ---------- main events ---------- */
 app.addEventListener("click",function(e){
   var t=e.target.closest("button");if(!t||!session)return;
@@ -425,6 +465,7 @@ app.addEventListener("click",function(e){
   if(t.dataset.tab){ui[t.dataset.side].tab=t.dataset.tab;return renderMain()}
   if(t.dataset.k){ui[t.dataset.side][t.dataset.k]=t.dataset.v;return renderMain()}
   if(a==="logout")return logout();
+  if(a==="list"){tlState={side:t.dataset.side,n:200};return renderList()}
   if(a==="pw")return renderPw();
   if(a==="admin"){adminOpen=true;adminSel=adminSel||me().id;return renderAdmin()}
   if(a==="back"){viewId=null;return renderMain()}
