@@ -196,7 +196,7 @@ function emailOf(n){return n.toLowerCase()+"@"+EMAIL_DOMAIN}
 function validName(n){return /^[a-z0-9._-]{3,30}$/i.test(n)}
 function defaults(){
   var d=new Date();d.setDate(1);d.setHours(0,0,0,0);
-  return {settings:{start:toLocalInput(d),capital:1000,coef:0.8,robotUrl:"",manualUrl:"",robotBalance:"",manualBalance:""},
+  return {settings:{start:toLocalInput(d),capital:1000,coef:0.8,coefRobot:0.8,coefManual:1,robotUrl:"",manualUrl:"",robotBalance:"",manualBalance:""},
     transfer:{robotPct:50,slRobot:"",slManual:"",slUnit:"%",withdraw:"",wdSide:"robot",withdrawals:[]}};
 }
 function me(){return DB.users.find(function(u){return u.id===session})}
@@ -239,7 +239,7 @@ function stats(u,side){
   var S=u.settings,T=u.transfer;
   var share=side==="robot"?+T.robotPct:100-T.robotPct;
   var base=(+S.capital||0)*share/100;
-  var start=new Date(S.start).getTime()||0,coef=+S.coef;if(!isFinite(coef))coef=1;
+  var start=new Date(S.start).getTime()||0,cv=side==="robot"?S.coefRobot:S.coefManual,coef=+(cv==null||cv===""?S.coef:cv);if(!isFinite(coef))coef=1;
   var tr=(u.trades[side]||[]).filter(function(t){return new Date(t.t).getTime()>=start}).sort(function(a,b){return new Date(a.t)-new Date(b.t)});
   var pctMode=tr.length>0&&tr.every(function(t){return typeof t.pct==="number"&&isFinite(t.pct)});
   if(pctMode){
@@ -248,10 +248,10 @@ function stats(u,side){
     var eq=base,dayStart=base,dk="";
     tr=tr.map(function(t){var d=new Date(t.t),k=d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate();
       if(k!==dk){dk=k;dayStart=eq}
-      var a=t.pct>0?t.pct*coef:t.pct,adj=dayStart*a/100;eq+=adj;
-      return Object.assign({},t,{srcProfit:t.profit,profit:dayStart*t.pct/100,adj:adj})});
+      var raw=dayStart*t.pct/100,adj=raw*coef;eq+=raw;
+      return Object.assign({},t,{srcProfit:t.profit,profit:raw,adj:adj})});
   }else{
-    tr=tr.map(function(t){return Object.assign({},t,{adj:t.profit>0?t.profit*coef:t.profit})});
+    tr=tr.map(function(t){return Object.assign({},t,{adj:t.profit*coef})});
   }
   var pnl=0,w=0,l=0;tr.forEach(function(t){pnl+=t.adj;if(t.profit>0)w++;else if(t.profit<0)l++});
   var wd=(T.withdrawals||[]).filter(function(x){return x.side===side}).reduce(function(a,x){return a+(+x.amount||0)},0);
@@ -371,11 +371,11 @@ function viewInv(u,side,st){
   var mb=st.manualBal,sd=new Date(st.start);
   return '<div class="tiles">'+
    tile("Původní investice",usd(st.base),st.share+" % z kapitálu "+usd(+u.settings.capital||0))+
-   tile("Aktuální stav",'<span class="'+cls(st.current-st.base)+'">'+usd(st.current)+'</span>',"zisky × "+num(st.coef,2)+(st.wd?" · výběry "+usd(st.wd):""))+
+   tile("Aktuální stav",'<span class="'+cls(st.current-st.base)+'">'+usd(st.current)+'</span>',"koeficient "+num(st.coef,2)+(st.wd?" · výběry "+usd(st.wd):""))+
    tile("Aktuální PnL",'<span class="'+cls(st.pnl)+'">'+usd(st.pnl,true)+'</span>',pct(st.base?st.pnl/st.base*100:NaN,true))+
    tile("Winrate",isFinite(st.winrate)?num(st.winrate,1)+" %":"—",st.wins+" ziskových · "+st.losses+" ztrátových")+
    (mb!=null?tile("Skutečný zůstatek (zadaný ručně)",usd(mb),"rozdíl proti výpočtu "+usd(mb-st.current,true),true):"")+
-   '</div><p class="note">Vyhodnocuje se od '+dmy(sd)+' '+pad(sd.getHours())+':'+pad(sd.getMinutes())+'. '+(st.pctMode?'Výsledky jsou procentní výnos zdrojového účtu přepočtený na vaši investici. ':'')+'Ziskové obchody se násobí koeficientem '+num(st.coef,2)+', ztrátové se počítají celé.</p>';
+   '</div><p class="note">Vyhodnocuje se od '+dmy(sd)+' '+pad(sd.getHours())+':'+pad(sd.getMinutes())+'. '+(st.pctMode?'Výsledky jsou procentní výnos zdrojového účtu přepočtený na vaši investici. ':'')+''+(st.coef===1?'Koeficient 1 – bez úprav.':'Výsledek se násobí koeficientem '+num(st.coef,2)+' (o '+num((1-st.coef)*100,0)+' % méně).')+'</p>';
 }
 function viewGraf(u,side,st){
   var s=ui[side];
@@ -586,13 +586,13 @@ function renderAdmin(){
    '<form id="fSet"><div class="grid2" style="margin-top:12px">'+
     '<label class="f">Začátek vyhodnocení obchodů XAUUSD<input type="datetime-local" id="eStart" value="'+esc(S.start)+'" required></label>'+
     '<label class="f">Počáteční kapitál (USD)<input type="number" step="any" min="0" id="eCap" value="'+esc(S.capital)+'" required></label>'+
-    '<label class="f">Koeficient ziskových obchodů<input type="number" step="any" min="0" id="eCoef" value="'+esc(S.coef)+'" required></label>'+
-    '<div></div>'+
+    '<label class="f">Koeficient – robotické obchodování<input type="number" step="any" min="0" id="eCoefR" value="'+esc(S.coefRobot!=null?S.coefRobot:S.coef)+'" required></label>'+
+    '<label class="f">Koeficient – manuální obchodování<input type="number" step="any" min="0" id="eCoefM" value="'+esc(S.coefManual!=null?S.coefManual:S.coef)+'" required></label>'+
     '<div class="f"><span class="lrow"><label for="eRU">Odkaz – Robotické obchodování</label><button type="button" class="act mini" data-x="upd" data-side="robot">Aktualizovat</button></span><input type="url" id="eRU" value="'+esc(S.robotUrl)+'" placeholder="https://…"></div>'+
     '<div class="f"><span class="lrow"><label for="eMU">Odkaz – Manuální obchodování</label><button type="button" class="act mini" data-x="upd" data-side="manual">Aktualizovat</button></span><input type="url" id="eMU" value="'+esc(S.manualUrl)+'" placeholder="https://…"></div>'+
     '<label class="f">Aktuální stav – robot (USD, ručně)<input type="number" step="any" id="eRB" value="'+esc(S.robotBalance)+'" placeholder="nezadáno"></label>'+
     '<label class="f">Aktuální stav – manuál (USD, ručně)<input type="number" step="any" id="eMB" value="'+esc(S.manualBalance)+'" placeholder="nezadáno"></label>'+
-   '</div><p class="hint">Koeficient 0,8 znamená, že se ze ziskového obchodu započítá 80 %. Ztrátové obchody se počítají celé. Heslo si uživatel mění sám tlačítkem Změnit heslo.</p><div class="row" style="margin-top:10px"><button class="act">Uložit nastavení</button></div></form>'+
+   '</div><p class="hint">Koeficient násobí výsledek v procentech: 1 = beze změny, 0,8 = o 20 % méně (např. +10 % se zobrazí jako +8 %). Heslo si uživatel mění sám tlačítkem Změnit heslo.</p><div class="row" style="margin-top:10px"><button class="act">Uložit nastavení</button></div></form>'+
    '<h4>Obchody</h4><p class="hint">Robot: '+sel.trades.robot.length+' obchodů · Manuál: '+sel.trades.manual.length+' obchodů. Nahrajte export z Myfxbooku (CSV) nebo report z MetaTraderu (HTML), případně vložte tabulku jako text. Započítají se jen obchody na XAUUSD.</p>'+
    '<div class="grid2" style="margin-top:10px"><label class="f">Stojánek<select id="iSide"><option value="robot">Robotické obchodování</option><option value="manual">Manuální obchodování</option></select></label>'+
    '<label class="f">Soubor<input type="file" id="iFile" accept=".csv,.txt,.htm,.html,.tsv"></label></div>'+
@@ -712,7 +712,7 @@ async function adminSubmit(e){
     }catch(err){busy(f,false);toast(errText(err))}
     return;
   }
-  if(f.id==="fSet"){var S=sel.settings;S.start=val("eStart");S.capital=+val("eCap");S.coef=+val("eCoef");S.robotUrl=val("eRU").trim();S.manualUrl=val("eMU").trim();S.robotBalance=val("eRB");S.manualBalance=val("eMB");
+  if(f.id==="fSet"){var S=sel.settings;S.start=val("eStart");S.capital=+val("eCap");S.coefRobot=+val("eCoefR");S.coefManual=+val("eCoefM");S.robotUrl=val("eRU").trim();S.manualUrl=val("eMU").trim();S.robotBalance=val("eRB");S.manualBalance=val("eMB");
     await persistSettings(sel);renderAdmin();renderMain();toast("Nastavení uloženo.")}
 }
 
