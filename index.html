@@ -127,6 +127,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold);outline:none}
 .split{display:flex;height:.9em;border-radius:999px;overflow:hidden;border:1px solid var(--line);margin:.4em 0 .2em}
 .split i{display:block;height:100%}
 input[type=range]{width:100%;accent-color:var(--c)}
+/* jezdec rozdělení: vlevo modrá (robot), vpravo oranžová (manuál); kulička má barvu převažující strany, při 50 % napůl */
+input.mix{-webkit-appearance:none;appearance:none;height:30px;background:transparent;margin:10px 0 4px;cursor:pointer}
+input.mix::-webkit-slider-runnable-track{height:12px;border-radius:999px;background:linear-gradient(90deg,var(--blue) 0 var(--p),var(--orange) var(--p) 100%);box-shadow:0 0 10px rgba(31,140,255,.35),0 0 10px rgba(255,116,23,.25)}
+input.mix::-moz-range-track{height:12px;border-radius:999px;background:linear-gradient(90deg,var(--blue) 0 var(--p),var(--orange) var(--p) 100%)}
+input.mix::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;margin-top:-8px;border-radius:50%;border:2px solid #fff;background:var(--thumb);box-shadow:0 0 12px var(--glow)}
+input.mix::-moz-range-thumb{width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:var(--thumb);box-shadow:0 0 12px var(--glow)}
+input.mix:focus-visible{outline:none}
+label.mixlab{display:block;line-height:1.5}
+input.mix:focus-visible::-webkit-slider-thumb{outline:2px solid var(--gold);outline-offset:2px}
 .wd{font-family:var(--f-mono);font-size:.8em;color:var(--muted);margin:.4em 0 0;padding:0;list-style:none}
 .wd li{display:flex;justify-content:space-between;gap:.5em;border-bottom:1px solid var(--line);padding:.2em 0}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:#111528;border:1px solid var(--gold);color:var(--gold);padding:10px 18px;border-radius:12px;z-index:50;font-weight:700;max-width:90vw}
@@ -434,10 +443,8 @@ function viewObch(u,side,st){
 function viewPrev(u,side,st){
   var T=u.transfer,cap=+u.settings.capital||0,rp=+T.robotPct,mp=100-rp,list=(T.withdrawals||[]).slice(-5).reverse();
   return '<form class="prevf" data-side="'+side+'">'+
-   '<label class="f" for="rng-'+side+'">Rozdělení investice: robot <b style="color:var(--blue-hi)">'+rp+' %</b> · manuál <b style="color:var(--orange-hi)">'+mp+' %</b></label>'+
-   '<input type="range" id="rng-'+side+'" min="0" max="100" step="5" value="'+rp+'" data-f="robotPct">'+
-   '<div class="split"><i style="width:'+rp+'%;background:var(--blue)"></i><i style="width:'+mp+'%;background:var(--orange)"></i></div>'+
-   '<div class="row" style="justify-content:space-between;font-family:var(--f-mono);font-size:13px;color:var(--muted)"><span>'+usd(cap*rp/100)+'</span><span>'+usd(cap*mp/100)+'</span></div>'+
+   '<label class="f mixlab" for="rng-'+side+'">Rozdělení investice: robot <b style="color:var(--blue-hi)">'+rp+' %</b> · manuál <b style="color:var(--orange-hi)">'+mp+' %</b></label>'+
+   '<input type="range" class="mix" id="rng-'+side+'" min="0" max="100" step="5" value="'+rp+'" data-f="robotPct" style="'+mixStyle(rp)+'">'+
    '<div class="grid2" style="margin-top:14px">'+
     '<label class="f">Stop loss – robot<input type="number" step="any" min="0" id="slr-'+side+'" data-f="slRobot" value="'+esc(T.slRobot)+'" placeholder="např. 20"></label>'+
     '<label class="f">Stop loss – manuál<input type="number" step="any" min="0" id="slm-'+side+'" data-f="slManual" value="'+esc(T.slManual)+'" placeholder="např. 15"></label>'+
@@ -449,6 +456,10 @@ function viewPrev(u,side,st){
    (list.length?'<ul class="wd">'+list.map(function(w){return '<li><span>'+dmy(new Date(w.t))+' · '+(w.side==="robot"?"robot":"manuál")+'</span><span>'+usd(-w.amount)+'</span></li>'}).join("")+'</ul>':'')+
    '<p class="note">Zaznamenaný výběr se odečte od aktuálního stavu příslušného účtu.</p></form>';
 }
+function mixStyle(rp){rp=+rp;
+  var th=rp>50?"var(--blue)":rp<50?"var(--orange)":"linear-gradient(90deg,var(--blue) 50%,var(--orange) 50%)";
+  var gl=rp>50?"var(--blue)":rp<50?"var(--orange)":"rgba(255,210,60,.6)";
+  return "--p:"+rp+"%;--thumb:"+th+";--glow:"+gl;}
 function slHint(T,cap){
   if(T.slUnit!=="%")return "";
   var r=+T.slRobot,m=+T.slManual,rp=+T.robotPct,p=[];
@@ -494,6 +505,8 @@ app.addEventListener("click",function(e){
     persistTransfer(u);renderMain();toast("Výběr "+usd(amt)+" zaznamenán.")}
 });
 app.addEventListener("submit",function(e){var f=e.target.closest(".prevf");if(!f)return;e.preventDefault();readPrev(f);persistTransfer(viewed()).then(function(){toast("Nastavení převodu uloženo.")});renderMain()});
+app.addEventListener("input",function(e){if(e.target.classList&&e.target.classList.contains("mix")){e.target.setAttribute("style",mixStyle(e.target.value));
+  var lb=e.target.previousElementSibling;if(lb){var b=lb.querySelectorAll("b");if(b.length===2){b[0].textContent=e.target.value+" %";b[1].textContent=(100-e.target.value)+" %"}}}});
 app.addEventListener("change",function(e){if(e.target.type==="range"){readPrev(e.target.closest(".prevf"));persistTransfer(viewed());renderMain()}});
 function readPrev(f){var u=viewed();f.querySelectorAll("[data-f]").forEach(function(el){var k=el.dataset.f;u.transfer[k]=k==="robotPct"?+el.value:el.value})}
 
