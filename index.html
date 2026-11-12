@@ -135,6 +135,10 @@ input.mix::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28
 input.mix::-moz-range-thumb{width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:var(--thumb);box-shadow:0 0 12px var(--glow)}
 input.mix:focus-visible{outline:none}
 label.mixlab{display:block;line-height:1.5}
+.mixvals{position:relative;height:20px;margin-top:10px}
+.mv{position:absolute;top:0;white-space:nowrap;font-family:var(--f-mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.mvb{color:var(--blue-hi);text-shadow:0 0 8px var(--blue)}.mvo{color:var(--orange-hi);text-shadow:0 0 8px var(--orange)}
+.mixvals+input.mix{margin-top:2px}
 input.mix:focus-visible::-webkit-slider-thumb{outline:2px solid var(--gold);outline-offset:2px}
 .wd{font-family:var(--f-mono);font-size:.8em;color:var(--muted);margin:.4em 0 0;padding:0;list-style:none}
 .wd li{display:flex;justify-content:space-between;gap:.5em;border-bottom:1px solid var(--line);padding:.2em 0}
@@ -368,7 +372,7 @@ function renderMain(){
     (m.isAdmin?'<button class="chip" data-a="admin">Správa účtů</button>':'')+'<button class="chip" data-a="pw">Změnit heslo</button><button class="chip" data-a="logout">Odhlásit</button></div>';
   if(u!==m)h+='<div class="banner"><span>Prohlížíte účet <b>'+esc(u.username)+'</b></span><button class="chip" data-a="back">Zpět na můj účet</button></div>';
   h+=sceneHTML(stand(u,"robot"),stand(u,"manual"));
-  app.innerHTML=h;
+  app.innerHTML=h;placeAllMix();
 }
 function stand(u,side){
   var st=stats(u,side),s=ui[side],url=side==="robot"?u.settings.robotUrl:u.settings.manualUrl;
@@ -444,7 +448,8 @@ function viewPrev(u,side,st){
   var T=u.transfer,cap=+u.settings.capital||0,rp=+T.robotPct,mp=100-rp,list=(T.withdrawals||[]).slice(-5).reverse();
   return '<form class="prevf" data-side="'+side+'">'+
    '<label class="f mixlab" for="rng-'+side+'">Rozdělení investice: robot <b style="color:var(--blue-hi)">'+rp+' %</b> · manuál <b style="color:var(--orange-hi)">'+mp+' %</b></label>'+
-   '<input type="range" class="mix" id="rng-'+side+'" min="0" max="100" step="5" value="'+rp+'" data-f="robotPct" style="'+mixStyle(rp)+'">'+
+   '<div class="mixvals"><span class="mv mvb"></span><span class="mv mvo"></span></div>'+
+   '<input type="range" class="mix" id="rng-'+side+'" min="0" max="100" step="5" value="'+rp+'" data-f="robotPct" data-cap="'+cap+'" style="'+mixStyle(rp)+'">'+
    '<div class="grid2" style="margin-top:14px">'+
     '<label class="f">Stop loss – robot<input type="number" step="any" min="0" id="slr-'+side+'" data-f="slRobot" value="'+esc(T.slRobot)+'" placeholder="např. 20"></label>'+
     '<label class="f">Stop loss – manuál<input type="number" step="any" min="0" id="slm-'+side+'" data-f="slManual" value="'+esc(T.slManual)+'" placeholder="např. 15"></label>'+
@@ -460,6 +465,19 @@ function mixStyle(rp){rp=+rp;
   var th=rp>50?"var(--blue)":rp<50?"var(--orange)":"linear-gradient(90deg,var(--blue) 50%,var(--orange) 50%)";
   var gl=rp>50?"var(--blue)":rp<50?"var(--orange)":"rgba(255,210,60,.6)";
   return "--p:"+rp+"%;--thumb:"+th+";--glow:"+gl;}
+/* popisky nad jezdcem: vždy uprostřed modré a uprostřed oranžové části, nepřetečou okraj */
+function placeMix(inp){
+  var box=inp.previousElementSibling;if(!box||!box.classList.contains("mixvals"))return;
+  var rp=+inp.value,cap=+inp.dataset.cap||0,W=box.clientWidth,b=box.querySelector(".mvb"),o=box.querySelector(".mvo");
+  b.textContent=rp+" % · "+usd(cap*rp/100);o.textContent=(100-rp)+" % · "+usd(cap*(100-rp)/100);
+  b.hidden=rp===0;o.hidden=rp===100;
+  var put=function(el,c){var w=el.offsetWidth,x=c*W-w/2;el.style.left=Math.max(0,Math.min(W-w,x))+"px"};
+  put(b,rp/200);put(o,(rp+100)/200);
+  if(!b.hidden&&!o.hidden){var bb=parseFloat(b.style.left)+b.offsetWidth+8,ol=parseFloat(o.style.left);
+    if(bb>ol){var sh=(bb-ol)/2;b.style.left=Math.max(0,parseFloat(b.style.left)-sh)+"px";o.style.left=Math.min(W-o.offsetWidth,ol+sh)+"px"}}
+}
+function placeAllMix(){document.querySelectorAll("input.mix").forEach(placeMix)}
+window.addEventListener("resize",placeAllMix);
 function slHint(T,cap){
   if(T.slUnit!=="%")return "";
   var r=+T.slRobot,m=+T.slManual,rp=+T.robotPct,p=[];
@@ -505,8 +523,8 @@ app.addEventListener("click",function(e){
     persistTransfer(u);renderMain();toast("Výběr "+usd(amt)+" zaznamenán.")}
 });
 app.addEventListener("submit",function(e){var f=e.target.closest(".prevf");if(!f)return;e.preventDefault();readPrev(f);persistTransfer(viewed()).then(function(){toast("Nastavení převodu uloženo.")});renderMain()});
-app.addEventListener("input",function(e){if(e.target.classList&&e.target.classList.contains("mix")){e.target.setAttribute("style",mixStyle(e.target.value));
-  var lb=e.target.previousElementSibling;if(lb){var b=lb.querySelectorAll("b");if(b.length===2){b[0].textContent=e.target.value+" %";b[1].textContent=(100-e.target.value)+" %"}}}});
+app.addEventListener("input",function(e){if(e.target.classList&&e.target.classList.contains("mix")){e.target.setAttribute("style",mixStyle(e.target.value));placeMix(e.target);
+  var lb=e.target.closest("form")&&e.target.closest("form").querySelector(".mixlab");if(lb){var b=lb.querySelectorAll("b");if(b.length===2){b[0].textContent=e.target.value+" %";b[1].textContent=(100-e.target.value)+" %"}}}});
 app.addEventListener("change",function(e){if(e.target.type==="range"){readPrev(e.target.closest(".prevf"));persistTransfer(viewed());renderMain()}});
 function readPrev(f){var u=viewed();f.querySelectorAll("[data-f]").forEach(function(el){var k=el.dataset.f;u.transfer[k]=k==="robotPct"?+el.value:el.value})}
 
