@@ -136,6 +136,7 @@ input.mix::-moz-range-thumb{width:24px;height:24px;border-radius:50%;border:2px 
 input.mix:focus-visible{outline:none}
 label.mixlab{display:block;line-height:1.5;font-size:13px}
 .prevf label.f{font-size:13px}
+.doact{justify-content:flex-end;font-size:13px}.doact .lbl{line-height:1}.doact .act{width:100%;padding:.62em 1em;font-size:15px}
 .mixvals{position:relative;height:20px;margin-top:10px}
 .mv{position:absolute;top:0;white-space:nowrap;font-family:var(--f-mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
 .mvb{color:var(--blue-hi);text-shadow:0 0 8px var(--blue)}.mvo{color:var(--orange-hi);text-shadow:0 0 8px var(--orange)}
@@ -455,8 +456,8 @@ function viewPrev(u,side,st){
     '<label class="f">Stop loss %<input type="number" step="any" min="0" id="sl-'+side+'" data-f="'+(side==="robot"?"slRobot":"slManual")+'" value="'+esc((side==="robot"?T.slRobot:T.slManual)||"0")+'"></label>'+
     '<label class="f">Take profit %<input type="number" step="any" min="0" id="tp-'+side+'" data-f="'+(side==="robot"?"tpRobot":"tpManual")+'" value="'+esc((side==="robot"?T.tpRobot:T.tpManual)||"0")+'"></label>'+
     '<label class="f">Částka k výběru $<input type="number" step="any" min="0" id="wa-'+side+'" data-f="withdraw" value="'+esc(T.withdraw)+'" placeholder="0,00"></label>'+
-    '<label class="f">Z účtu<select id="ws-'+side+'" data-f="wdSide"><option value="robot"'+(T.wdSide==="robot"?" selected":"")+'>Robotický</option><option value="manual"'+(T.wdSide==="manual"?" selected":"")+'>Manuální</option></select></label>'+
-   '</div><div class="row" style="margin-top:14px"><button class="act" data-a="saveprev">Uložit nastavení</button><button class="act ghost" type="button" data-a="dowd">Zaznamenat výběr</button></div>'+
+    '<div class="f doact"><span class="lbl">&nbsp;</span><button type="button" class="act" data-a="dowd" data-side="'+side+'">Proveď</button></div>'+
+   '</div><div class="row" style="margin-top:14px"><button class="act" data-a="saveprev">Uložit nastavení</button></div>'+
    (list.length?'<ul class="wd">'+list.map(function(w){return '<li><span>'+dmy(new Date(w.t))+' · '+(w.side==="robot"?"robot":"manuál")+'</span><span>'+usd(-w.amount)+'</span></li>'}).join("")+'</ul>':'')+
    '<p class="note">Zaznamenaný výběr se odečte od aktuálního stavu příslušného účtu.</p></form>';
 }
@@ -518,7 +519,7 @@ app.addEventListener("click",function(e){
   if(a==="back"){viewId=null;return renderMain()}
   if(a==="dowd"){e.preventDefault();readPrev(t.closest("form"));var u=viewed(),amt=+u.transfer.withdraw;
     if(!(amt>0)){toast("Zadejte částku k výběru.");return}
-    u.transfer.withdrawals.push({t:new Date().toISOString(),amount:amt,side:u.transfer.wdSide});u.transfer.withdraw="";
+    var wside=t.dataset.side||u.transfer.wdSide;u.transfer.withdrawals.push({t:new Date().toISOString(),amount:amt,side:wside});u.transfer.withdraw="";
     persistTransfer(u);renderMain();toast("Výběr "+usd(amt)+" zaznamenán.")}
 });
 app.addEventListener("submit",function(e){var f=e.target.closest(".prevf");if(!f)return;e.preventDefault();readPrev(f);persistTransfer(viewed()).then(function(){toast("Nastavení převodu uloženo.")});renderMain()});
