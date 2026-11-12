@@ -451,8 +451,8 @@ function viewPrev(u,side,st){
    '<div class="mixvals"><span class="mv mvb"></span><span class="mv mvo"></span></div>'+
    '<input type="range" class="mix" id="rng-'+side+'" min="0" max="100" step="5" value="'+rp+'" data-f="robotPct" data-cap="'+cap+'" style="'+mixStyle(rp)+'">'+
    '<div class="grid2" style="margin-top:14px">'+
-    '<label class="f">Stop loss %<input type="number" step="any" min="0" id="sl-'+side+'" data-f="'+(side==="robot"?"slRobot":"slManual")+'" value="'+esc(side==="robot"?T.slRobot:T.slManual)+'" placeholder="např. 20"></label>'+
-    '<label class="f">Take profit %<input type="number" step="any" min="0" id="tp-'+side+'" data-f="'+(side==="robot"?"tpRobot":"tpManual")+'" value="'+esc((side==="robot"?T.tpRobot:T.tpManual)||"")+'" placeholder="např. 30"></label>'+
+    '<label class="f">Stop loss %<input type="number" step="any" min="0" id="sl-'+side+'" data-f="'+(side==="robot"?"slRobot":"slManual")+'" value="'+esc((side==="robot"?T.slRobot:T.slManual)||"0")+'"></label>'+
+    '<label class="f">Take profit %<input type="number" step="any" min="0" id="tp-'+side+'" data-f="'+(side==="robot"?"tpRobot":"tpManual")+'" value="'+esc((side==="robot"?T.tpRobot:T.tpManual)||"0")+'"></label>'+
     '<label class="f">Částka k výběru (USD)<input type="number" step="any" min="0" id="wa-'+side+'" data-f="withdraw" value="'+esc(T.withdraw)+'" placeholder="0,00"></label>'+
     '<label class="f">Z účtu<select id="ws-'+side+'" data-f="wdSide"><option value="robot"'+(T.wdSide==="robot"?" selected":"")+'>Robotický</option><option value="manual"'+(T.wdSide==="manual"?" selected":"")+'>Manuální</option></select></label>'+
    '</div><div class="row" style="margin-top:14px"><button class="act" data-a="saveprev">Uložit nastavení</button><button class="act ghost" type="button" data-a="dowd">Zaznamenat výběr</button></div>'+
