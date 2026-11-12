@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Doplní nové obchody z výstupu tools/collect.js do data/gold-evolution.csv.
 
-Použití:  python3 tools/merge_trades.py vystup.txt
+Použití:  python3 tools/merge_trades.py vystup.txt [cílový.csv]
+          (bez cílového souboru se použije data/gold-evolution.csv – robotické obchodování;
+           pro manuální obchodování: data/manual.csv)
 Ověří kontrolní součet, sloučí bez duplicit a seřadí podle času zavření.
 Vypíše počet přidaných obchodů; při chybě skončí s nenulovým kódem a soubor nezmění.
 """
@@ -28,7 +30,13 @@ def fmt(t):  # yymmddhhmm -> YYYY-MM-DD HH:MM
     return f"20{t[0:2]}-{t[2:4]}-{t[4:6]} {t[6:8]}:{t[8:10]}"
 
 
-def main(path):
+def main(path, target=None):
+    global CSV
+    if target:
+        CSV = target
+    if not os.path.exists(CSV):
+        with open(CSV, 'w', encoding='utf-8') as f:
+            f.write(','.join(HEADER) + '\n')
     lines = open(path, encoding='utf-8').read().strip().splitlines()
     head = lines[0].split()
     if head[0] != 'PAGES':
@@ -66,4 +74,4 @@ def main(path):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)
