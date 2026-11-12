@@ -187,7 +187,11 @@ var FIREBASE_CONFIG = {
 "use strict";
 var EMAIL_DOMAIN="users.xau-panel.app";
 var DB={users:[]},session=null,viewId=null,needSetup=false,creatingAdmin=false,loginErr="";
-var ui={robot:{tab:"inv",unit:"pct",per:"day",tper:"week"},manual:{tab:"inv",unit:"pct",per:"day",tper:"week"}};
+var ui={robot:{tab:"inv",unit:"pct",per:"day",tper:"day"},manual:{tab:"inv",unit:"pct",per:"day",tper:"day"}};
+/* poslední volby (záložka, jednotka, období) si pamatuje tento prohlížeč */
+var UI_KEY="xauPanel.ui";
+try{var sv=JSON.parse(localStorage.getItem(UI_KEY)||"null");if(sv)["robot","manual"].forEach(function(k){if(sv[k])Object.keys(ui[k]).forEach(function(f){if(typeof sv[k][f]==="string")ui[k][f]=sv[k][f]})})}catch(e){}
+function saveUi(){try{localStorage.setItem(UI_KEY,JSON.stringify(ui))}catch(e){}}
 var adminOpen=false,adminSel=null,auth=null,fs=null;
 var DEMO=/[?&]demo\b/.test(location.search);
 
@@ -477,8 +481,8 @@ function renderList(){
 app.addEventListener("click",function(e){
   var t=e.target.closest("button");if(!t||!session)return;
   var a=t.dataset.a;
-  if(t.dataset.tab){ui[t.dataset.side].tab=t.dataset.tab;return renderMain()}
-  if(t.dataset.k){ui[t.dataset.side][t.dataset.k]=t.dataset.v;return renderMain()}
+  if(t.dataset.tab){ui[t.dataset.side].tab=t.dataset.tab;saveUi();return renderMain()}
+  if(t.dataset.k){ui[t.dataset.side][t.dataset.k]=t.dataset.v;saveUi();return renderMain()}
   if(a==="logout")return logout();
   if(a==="list"){tlState={side:t.dataset.side,n:200};return renderList()}
   if(a==="pw")return renderPw();
