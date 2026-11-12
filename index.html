@@ -25,11 +25,10 @@ button{cursor:pointer}
 .wrap{max-width:1680px;margin:0 auto}
 
 /* top bar */
-.topbar{position:fixed;z-index:20;right:calc(12px + env(safe-area-inset-right,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 24px);
+.topbar{width:fit-content;max-width:100%;margin:14px 0 0 auto;
   display:flex;justify-content:flex-end;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px 8px 16px;border-radius:999px;
-  background:rgba(4,6,15,.82);border:1px solid var(--line);box-shadow:0 6px 24px rgba(0,0,0,.5);backdrop-filter:blur(6px)}
-body{padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
-@media (max-width:640px){.topbar{left:calc(12px + env(safe-area-inset-left,0px));border-radius:18px;justify-content:center}body{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}}
+  background:rgba(4,6,15,.82);border:1px solid var(--line)}
+@media (max-width:640px){.topbar{width:auto;margin-left:0;border-radius:18px;justify-content:center}}
 .who{color:var(--muted);font-size:13px}
 .who b{color:var(--fg)}
 .chip{border:1px solid var(--line);background:rgba(255,255,255,.05);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:700}
@@ -148,7 +147,7 @@ label.mixlab{display:block;line-height:1.5;font-size:13px}
 input.mix:focus-visible::-webkit-slider-thumb{outline:2px solid var(--gold);outline-offset:2px}
 .wd{font-family:var(--f-mono);font-size:.8em;color:var(--muted);margin:.4em 0 0;padding:0;list-style:none}
 .wd li{display:flex;justify-content:space-between;gap:.5em;border-bottom:1px solid var(--line);padding:.2em 0}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom,0px));background:#111528;border:1px solid var(--gold);color:var(--gold);padding:10px 18px;border-radius:12px;z-index:50;font-weight:700;max-width:90vw}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:#111528;border:1px solid var(--gold);color:var(--gold);padding:10px 18px;border-radius:12px;z-index:50;font-weight:700;max-width:90vw}
 
 /* auth inside the blue stand */
 .authf{display:grid;gap:.8em;max-width:26em}
@@ -374,10 +373,11 @@ function logout(){if(DEMO){location.href=location.pathname;return}auth.signOut()
 /* ---------- main view ---------- */
 function renderMain(){
   var m=me(),u=viewed();
-  var h='<div class="topbar"><span class="who" id="lastUpd">'+esc(lastUpd)+'</span><span class="who">Přihlášen: <b>'+esc(m.username)+'</b>'+(m.isAdmin?' · správce':'')+'</span>'+
+  var bar='<div class="topbar"><span class="who" id="lastUpd">'+esc(lastUpd)+'</span><span class="who">Přihlášen: <b>'+esc(m.username)+'</b>'+(m.isAdmin?' · správce':'')+'</span>'+
     (m.isAdmin?'<button class="chip" data-a="admin">Správa účtů</button>':'')+'<button class="chip" data-a="pw">Změnit heslo</button><button class="chip" data-a="logout">Odhlásit</button></div>';
+  var h='';
   if(u!==m)h+='<div class="banner"><span>Prohlížíte účet <b>'+esc(u.username)+'</b></span><button class="chip" data-a="back">Zpět na můj účet</button></div>';
-  h+=sceneHTML(stand(u,"robot"),stand(u,"manual"));
+  h+=sceneHTML(stand(u,"robot"),stand(u,"manual"))+bar;
   app.innerHTML=h;placeAllMix();
 }
 function stand(u,side){
