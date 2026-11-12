@@ -134,7 +134,7 @@ input.mix::-moz-range-track{height:12px;border-radius:999px;background:linear-gr
 input.mix::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;margin-top:-8px;border-radius:50%;border:2px solid #fff;background:var(--thumb);box-shadow:0 0 12px var(--glow)}
 input.mix::-moz-range-thumb{width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:var(--thumb);box-shadow:0 0 12px var(--glow)}
 input.mix:focus-visible{outline:none}
-label.mixlab{display:block;line-height:1.5}
+label.mixlab{display:block;line-height:1.5;font-size:13px}
 .mixvals{position:relative;height:20px;margin-top:10px}
 .mv{position:absolute;top:0;white-space:nowrap;font-family:var(--f-mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
 .mvb{color:var(--blue-hi);text-shadow:0 0 8px var(--blue)}.mvo{color:var(--orange-hi);text-shadow:0 0 8px var(--orange)}
@@ -447,7 +447,7 @@ function viewObch(u,side,st){
 function viewPrev(u,side,st){
   var T=u.transfer,cap=+u.settings.capital||0,rp=+T.robotPct,mp=100-rp,list=(T.withdrawals||[]).slice(-5).reverse();
   return '<form class="prevf" data-side="'+side+'">'+
-   '<label class="f mixlab" for="rng-'+side+'">Rozdělení investice: robot <b style="color:var(--blue-hi)">'+rp+' %</b> · manuál <b style="color:var(--orange-hi)">'+mp+' %</b></label>'+
+   '<label class="f mixlab" for="rng-'+side+'">Rozdělení investice</label>'+
    '<div class="mixvals"><span class="mv mvb"></span><span class="mv mvo"></span></div>'+
    '<input type="range" class="mix" id="rng-'+side+'" min="0" max="100" step="5" value="'+rp+'" data-f="robotPct" data-cap="'+cap+'" style="'+mixStyle(rp)+'">'+
    '<div class="grid2" style="margin-top:14px">'+
