@@ -135,6 +135,7 @@ input.mix::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28
 input.mix::-moz-range-thumb{width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:var(--thumb);box-shadow:0 0 12px var(--glow)}
 input.mix:focus-visible{outline:none}
 label.mixlab{display:block;line-height:1.5;font-size:13px}
+.prevf label.f{font-size:13px}
 .mixvals{position:relative;height:20px;margin-top:10px}
 .mv{position:absolute;top:0;white-space:nowrap;font-family:var(--f-mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
 .mvb{color:var(--blue-hi);text-shadow:0 0 8px var(--blue)}.mvo{color:var(--orange-hi);text-shadow:0 0 8px var(--orange)}
@@ -453,7 +454,7 @@ function viewPrev(u,side,st){
    '<div class="grid2" style="margin-top:14px">'+
     '<label class="f">Stop loss %<input type="number" step="any" min="0" id="sl-'+side+'" data-f="'+(side==="robot"?"slRobot":"slManual")+'" value="'+esc((side==="robot"?T.slRobot:T.slManual)||"0")+'"></label>'+
     '<label class="f">Take profit %<input type="number" step="any" min="0" id="tp-'+side+'" data-f="'+(side==="robot"?"tpRobot":"tpManual")+'" value="'+esc((side==="robot"?T.tpRobot:T.tpManual)||"0")+'"></label>'+
-    '<label class="f">Částka k výběru (USD)<input type="number" step="any" min="0" id="wa-'+side+'" data-f="withdraw" value="'+esc(T.withdraw)+'" placeholder="0,00"></label>'+
+    '<label class="f">Částka k výběru $<input type="number" step="any" min="0" id="wa-'+side+'" data-f="withdraw" value="'+esc(T.withdraw)+'" placeholder="0,00"></label>'+
     '<label class="f">Z účtu<select id="ws-'+side+'" data-f="wdSide"><option value="robot"'+(T.wdSide==="robot"?" selected":"")+'>Robotický</option><option value="manual"'+(T.wdSide==="manual"?" selected":"")+'>Manuální</option></select></label>'+
    '</div><div class="row" style="margin-top:14px"><button class="act" data-a="saveprev">Uložit nastavení</button><button class="act ghost" type="button" data-a="dowd">Zaznamenat výběr</button></div>'+
    (list.length?'<ul class="wd">'+list.map(function(w){return '<li><span>'+dmy(new Date(w.t))+' · '+(w.side==="robot"?"robot":"manuál")+'</span><span>'+usd(-w.amount)+'</span></li>'}).join("")+'</ul>':'')+
