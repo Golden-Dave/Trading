@@ -214,7 +214,7 @@ function validName(n){return /^[a-z0-9._-]{3,30}$/i.test(n)}
 function defaults(){
   var d=new Date();d.setDate(1);d.setHours(0,0,0,0);
   return {settings:{start:toLocalInput(d),capital:1000,coef:0.8,coefRobot:0.8,coefManual:1,robotUrl:"",manualUrl:"",robotBalance:"",manualBalance:""},
-    transfer:{robotPct:50,slRobot:"",slManual:"",slUnit:"%",withdraw:"",wdSide:"robot",withdrawals:[]}};
+    transfer:{robotPct:50,slRobot:"",slManual:"",tpRobot:"",tpManual:"",slUnit:"%",withdraw:"",wdSide:"robot",withdrawals:[]}};
 }
 function me(){return DB.users.find(function(u){return u.id===session})}
 function viewed(){var m=me();if(m&&m.isAdmin&&viewId){var v=DB.users.find(function(u){return u.id===viewId});if(v)return v}return m}
@@ -451,10 +451,8 @@ function viewPrev(u,side,st){
    '<div class="mixvals"><span class="mv mvb"></span><span class="mv mvo"></span></div>'+
    '<input type="range" class="mix" id="rng-'+side+'" min="0" max="100" step="5" value="'+rp+'" data-f="robotPct" data-cap="'+cap+'" style="'+mixStyle(rp)+'">'+
    '<div class="grid2" style="margin-top:14px">'+
-    '<label class="f">Stop loss – robot<input type="number" step="any" min="0" id="slr-'+side+'" data-f="slRobot" value="'+esc(T.slRobot)+'" placeholder="např. 20"></label>'+
-    '<label class="f">Stop loss – manuál<input type="number" step="any" min="0" id="slm-'+side+'" data-f="slManual" value="'+esc(T.slManual)+'" placeholder="např. 15"></label>'+
-    '<label class="f">Jednotka stop lossu<select id="slu-'+side+'" data-f="slUnit"><option'+(T.slUnit==="%"?" selected":"")+'>%</option><option'+(T.slUnit==="USD"?" selected":"")+'>USD</option><option'+(T.slUnit==="pips"?" selected":"")+'>pips</option></select></label>'+
-    '<div class="f" style="justify-content:flex-end"><span class="s">'+slHint(T,cap)+'</span></div>'+
+    '<label class="f">Stop loss %<input type="number" step="any" min="0" id="sl-'+side+'" data-f="'+(side==="robot"?"slRobot":"slManual")+'" value="'+esc(side==="robot"?T.slRobot:T.slManual)+'" placeholder="např. 20"></label>'+
+    '<label class="f">Take profit %<input type="number" step="any" min="0" id="tp-'+side+'" data-f="'+(side==="robot"?"tpRobot":"tpManual")+'" value="'+esc((side==="robot"?T.tpRobot:T.tpManual)||"")+'" placeholder="např. 30"></label>'+
     '<label class="f">Částka k výběru (USD)<input type="number" step="any" min="0" id="wa-'+side+'" data-f="withdraw" value="'+esc(T.withdraw)+'" placeholder="0,00"></label>'+
     '<label class="f">Z účtu<select id="ws-'+side+'" data-f="wdSide"><option value="robot"'+(T.wdSide==="robot"?" selected":"")+'>Robotický</option><option value="manual"'+(T.wdSide==="manual"?" selected":"")+'>Manuální</option></select></label>'+
    '</div><div class="row" style="margin-top:14px"><button class="act" data-a="saveprev">Uložit nastavení</button><button class="act ghost" type="button" data-a="dowd">Zaznamenat výběr</button></div>'+
