@@ -381,7 +381,7 @@ function viewInv(u,side,st){
 }
 function viewGraf(u,side,st){
   var s=ui[side];
-  var head='<div class="ctrls">'+seg(side,"unit",[["pct","%"],["pips","Pips"],["lot","Lot"],["usd","$"]])+seg(side,"per",[["day","Dny"],["week","Týdny"],["month","Měsíce"],["year","Roky"]])+'</div>';
+  var head='<div class="ctrls">'+seg(side,"unit",[["pct","%"],["usd","$"],["lot","Lot"],["pips","Pips"]])+seg(side,"per",[["day","Dny"],["week","Týdny"],["month","Měsíce"],["year","Roky"]])+'</div>';
   if(!st.trades.length)return head+noData();
   var b=buckets(st,s.per).slice(-7);
   return head+'<div class="chart">'+chartSVG(b,s.unit)+'</div><p class="note">Posledních '+b.length+' '+({day:"obchodních dnů",week:"týdnů",month:"měsíců",year:"let"})[s.per]+' s obchody. Hodnota nad sloupcem je ve zvolené jednotce.</p>';
