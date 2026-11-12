@@ -54,7 +54,9 @@ button{cursor:pointer}
 .manual .frame{border-image-source:var(--img-manual);padding-left:calc(var(--u)*66);padding-right:calc(var(--u)*88)}
 .shead{position:absolute;top:calc(var(--u)*284);left:calc(var(--u)*330);right:calc(var(--u)*62);height:calc(var(--u)*56);display:flex;align-items:center;justify-content:space-between;gap:10px}
 .manual .shead{left:calc(var(--u)*66);right:calc(var(--u)*330)}
-.robot .shead{flex-direction:row-reverse}
+.manual .shead{flex-direction:row-reverse}
+.robot .shead{right:calc(var(--u)*58)}
+.manual .shead{left:calc(var(--u)*62)}
 .shead h2{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(14px,calc(var(--u)*30),30px);color:#fff;text-shadow:0 0 10px var(--c),0 0 2px var(--hi);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .src{font-size:clamp(11px,calc(var(--u)*17),15px);color:var(--hi);text-decoration:none;border-bottom:1px dashed currentColor;white-space:nowrap}
 .src:hover{color:#fff}
@@ -661,7 +663,7 @@ async function adminSubmit(e){
 
 /* ---------- start ---------- */
 if(DEMO){
-  var df=defaults(),d=new Date();d.setMonth(d.getMonth()-5);df.settings.start=toLocalInput(d);df.settings.robotUrl="https://www.myfxbook.com/";
+  var df=defaults(),d=new Date();d.setMonth(d.getMonth()-5);df.settings.start=toLocalInput(d);df.settings.robotUrl="https://www.myfxbook.com/";df.settings.manualUrl="https://www.myfxbook.com/";
   DB.users=[{id:"demo",username:"ukazka",isAdmin:false,settings:df.settings,transfer:df.transfer,trades:{robot:demoTrades(7,.66),manual:demoTrades(19,.58)}}];
   session="demo";render();toast("Ukázkový režim – data se neukládají.");
 }else if(!FIREBASE_CONFIG.apiKey||!FIREBASE_CONFIG.projectId){
