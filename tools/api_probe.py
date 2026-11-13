@@ -53,6 +53,18 @@ try:
             ct = sorted(str(x.get('closeTime')) for x in hist)
             print('   closeTime od', ct[0], 'do', ct[-1], '| formát openTime:', hist[0].get('openTime'))
             print('   symboly:', sorted({str(x.get('symbol')) for x in hist})[:8], '| akce:', sorted({str(x.get('action')) for x in hist})[:8])
+        for x in sorted(hist, key=lambda x: str(x.get('closeTime'))):
+            sz = x.get('sizing') or {}
+            print('   T', x.get('openTime'), '|', x.get('closeTime'), '|', x.get('action'), '|', sz.get('type'), sz.get('value'), '|', x.get('pips'), '|', x.get('profit'), '|', x.get('commission'), x.get('interest'))
+        g = call('get-daily-gain.json', s, id=i, start='2026-01-01', end='2026-12-31').get('dailyGain') or []
+        for row in g:
+            for y in row:
+                print('   G', y.get('date'), y.get('value'), y.get('profit'))
+        dd = call('get-data-daily.json', s, id=i, start='2026-01-01', end='2026-12-31').get('dataDaily') or []
+        for row in dd:
+            for y in row:
+                b, pr = float(y.get('balance') or 0), float(y.get('profit') or 0)
+                print('   D', y.get('date'), 'profit', pr, 'pips', y.get('pips'), 'lots', y.get('lots'), 'growthEquity', y.get('growthEquity'), 'profit/(bal-profit)%', round(pr / (b - pr) * 100, 4) if b - pr else None)
         for ep, key in (('get-daily-gain.json', 'dailyGain'), ('get-data-daily.json', 'dataDaily')):
             d = call(ep, s, id=i, start='2026-11-01', end='2026-11-30')
             print('  ', ep, ': chyba', d.get('error'), '|', d.get('message'), '|', shape(d.get(key)))
