@@ -1,23 +1,15 @@
 name: Test stažení výpisu
 on:
   push:
-    paths: [".github/workflows/test-download.yml"]
+    paths: [".github/workflows/test-download.yml", "tools/api_probe.py"]
   workflow_dispatch:
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Dostupnost Myfxbooku ze serveru GitHub
-        run: |
-          set +e
-          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
-          for URL in \
-            "https://www.myfxbook.com/statements/12034345/statement.html" \
-            "https://www.myfxbook.com/statements/12309673/statement.html" \
-            "https://www.myfxbook.com/api/get-my-accounts.json?session=test" \
-            "https://www.myfxbook.com/api/login.json?email=test&password=test"; do
-            curl -sS -L -m 60 -A "$UA" -H "Accept: text/html,application/json,*/*" -o out.txt \
-              -w "http=%{http_code} type=%{content_type} size=%{size_download}  ${URL%%\?*}\n" "$URL"
-            echo "   titulek: $(grep -o '<title>[^<]*' out.txt | head -1)"
-            echo "   zacatek: $(head -c 200 out.txt | tr '\n' ' ')"
-          done
+      - uses: actions/checkout@v4
+      - name: Zkouška API Myfxbooku
+        env:
+          MYFXBOOK_EMAIL: ${{ secrets.MYFXBOOK_EMAIL }}
+          MYFXBOOK_PASSWORD: ${{ secrets.MYFXBOOK_PASSWORD }}
+        run: python3 tools/api_probe.py
