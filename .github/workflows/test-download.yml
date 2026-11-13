@@ -1,0 +1,23 @@
+name: Test stažení výpisu
+on:
+  push:
+    paths: [".github/workflows/test-download.yml"]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dostupnost odkazů robota ze serveru GitHub
+        run: |
+          set +e
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+          for URL in \
+            "https://www.myfxbook.com/statements/12034345/statement.html" \
+            "https://www.myfxbook.com/statements/12034345/statement.pdf" \
+            "https://www.myfxbook.com/statements/12034345/statement.csv" \
+            "https://www.myfxbook.com/members/RobotFX/gold-evolution-by-robot-fx-trading/12034345" \
+            "https://widget.myfxbook.com/widget/widget.png?accountOid=12034345&type=6" \
+            "https://widgets.myfxbook.com/widgets/12034345/large.jpg"; do
+            curl -sS -L -m 60 -A "$UA" -H "Accept: */*" -o out.bin \
+              -w "http=%{http_code} type=%{content_type} size=%{size_download}  $URL\n" "$URL"
+            echo "   zacatek: $(head -c 120 out.bin | tr -c '[:print:]' ' ')"
+          done
