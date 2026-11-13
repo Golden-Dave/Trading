@@ -1,0 +1,36 @@
+name: Aktualizace obchodů – manuál (API)
+# Každou hodinu stáhne nové obchody manuálního účtu přes oficiální API Myfxbooku a uloží je do data/.
+# Spouští se ve :43, aby byla data hotová před celou hodinou, kdy si je aplikace načítá
+# (GitHub naplánované běhy obvykle o několik minut zpozdí).
+on:
+  schedule:
+    - cron: "43 * * * *"
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/update-manual.yml", "tools/api_update.py"]
+permissions:
+  contents: write
+concurrency:
+  group: update-manual
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stáhnout obchody a křivku růstu
+        env:
+          MYFXBOOK_EMAIL: ${{ secrets.MYFXBOOK_EMAIL }}
+          MYFXBOOK_PASSWORD: ${{ secrets.MYFXBOOK_PASSWORD }}
+        run: python3 tools/api_update.py 12309673 data/manual.csv
+      - name: Uložit změny
+        run: |
+          git add data/manual.csv data/manual-growth.csv
+          if git diff --cached --quiet; then echo "Žádné nové obchody."; exit 0; fi
+          git -c user.name="GitHub Actions" -c user.email="actions@github.com" commit -m "Aktualizace obchodů (manuál, API)"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
