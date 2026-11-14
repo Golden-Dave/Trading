@@ -301,8 +301,8 @@ function bucketLabel(d,per){if(per==="day"||per==="week")return dmy(d);if(per===
 function buckets(st,per){
   var map={},order=[];
   st.trades.forEach(function(t){var s=periodStart(new Date(t.t),per),k=s.getTime();
-    if(!map[k]){map[k]={start:s,profit:0,pips:0,lots:0,n:0};order.push(k)}
-    var b=map[k];b.profit+=t.adj;b.pips+=(+t.pips||0);b.lots+=(+t.lots||0);b.n++});
+    if(!map[k]){map[k]={start:s,profit:0,pips:0,lots:0,n:0,nx:0};order.push(k)}
+    var b=map[k];b.profit+=t.adj;b.pips+=(+t.pips||0);b.lots+=(+t.lots||0);b.n++;if(!t.sym)b.nx++});
   order.sort(function(a,b){return a-b});
   var bal=st.base;
   return order.map(function(k){var b=map[k];b.pct=bal>0?b.profit/bal*100:NaN;b.label=bucketLabel(b.start,per);bal+=b.profit;return b});
@@ -315,14 +315,14 @@ function bucketsAll(u,side,st,per){
   var pre=(u.trades[side]||[]).filter(function(t){return new Date(t.t).getTime()<st.start}).sort(function(a,b){return new Date(a.t)-new Date(b.t)});
   var hasPct=pre.length>0&&pre.every(function(t){return typeof t.pct==="number"&&isFinite(t.pct)}),pm={},po=[];
   pre.forEach(function(t){var d=new Date(t.t),s=periodStart(d,per),k=s.getTime(),dk=d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate();
-    if(!pm[k]){pm[k]={start:s,pips:0,lots:0,n:0,days:{},dord:[]};po.push(k)}
-    var b=pm[k];b.pips+=(+t.pips||0);b.lots+=(+t.lots||0);b.n++;
+    if(!pm[k]){pm[k]={start:s,pips:0,lots:0,n:0,nx:0,days:{},dord:[]};po.push(k)}
+    var b=pm[k];b.pips+=(+t.pips||0);b.lots+=(+t.lots||0);b.n++;if(!t.sym)b.nx++;
     if(hasPct){if(!(dk in b.days)){b.days[dk]=0;b.dord.push(dk)}b.days[dk]+=t.pct}});
   po.forEach(function(k){var b=pm[k],g=NaN;
     if(hasPct){g=1;b.dord.forEach(function(dk){var r=b.days[dk];g*=1+(r>0?r*st.coef:r)/100});g=(g-1)*100}  /* v rámci dne se % sčítají, kladný den × koeficient, mezi dny se úročí */
     var m=map[k];
-    if(m){m.pips+=b.pips;m.lots+=b.lots;m.n+=b.n;m.pct=isFinite(g)&&isFinite(m.pct)?((1+g/100)*(1+m.pct/100)-1)*100:m.pct}
-    else out.push({start:b.start,profit:NaN,pips:b.pips,lots:b.lots,n:b.n,pct:g,pre:true,label:bucketLabel(b.start,per)})});
+    if(m){m.pips+=b.pips;m.lots+=b.lots;m.n+=b.n;m.nx+=b.nx;m.pct=isFinite(g)&&isFinite(m.pct)?((1+g/100)*(1+m.pct/100)-1)*100:m.pct}
+    else out.push({start:b.start,profit:NaN,pips:b.pips,lots:b.lots,n:b.n,nx:b.nx,pct:g,pre:true,label:bucketLabel(b.start,per)})});
   return out.sort(function(a,b){return a.start-b.start});
 }
 
@@ -411,7 +411,7 @@ function stand(u,side){
   var btns='<div class="btns">'+tabs.map(function(t,i){return '<button class="hot h'+i+'" data-side="'+side+'" data-tab="'+t[0]+'" aria-pressed="'+(s.tab===t[0])+'" aria-label="'+t[1]+'" title="'+t[1]+'"><span class="ring"></span></button>'}).join("")+'</div>';
   return shell(side,head,body,btns);
 }
-function noData(){return '<div class="empty">Zatím tu nejsou žádné obchody XAUUSD od nastaveného data.<br>Správce je nahraje v sekci <b>Správa účtů → Obchody</b>.</div>'}
+function noData(){return '<div class="empty">Zatím tu nejsou žádné obchody od nastaveného data.<br>Správce je nahraje v sekci <b>Správa účtů → Ruční aktualizace</b>.</div>'}
 function tile(k,v,s,wide){return '<div class="tile'+(wide?' wide':'')+'"><div class="k">'+k+'</div><div class="v">'+v+'</div>'+(s?'<div class="s">'+s+'</div>':'')+'</div>'}
 function seg(side,key,opts){return '<div class="seg" role="group">'+opts.map(function(o){return '<button data-side="'+side+'" data-k="'+key+'" data-v="'+o[0]+'" aria-pressed="'+(ui[side][key]===o[0])+'">'+o[1]+'</button>'}).join("")+'</div>'}
 
@@ -429,7 +429,7 @@ function viewGraf(u,side,st){
   var s=ui[side];
   var head='<div class="ctrls">'+seg(side,"unit",[["pct","%"],["usd","$"],["lot","Lot"],["pips","Pips"]])+seg(side,"per",[["day","Dny"],["week","Týdny"],["month","Měsíce"],["year","Roky"]])+'</div>';
   var all=bucketsAll(u,side,st,s.per),hid=0;
-  var b=all.filter(function(x){var ok=s.unit==="usd"?!x.pre:s.unit==="pct"?isFinite(x.pct):true;if(!ok)hid++;return ok});
+  var b=all.filter(function(x){var ok=s.unit==="usd"?!x.pre:s.unit==="pct"?isFinite(x.pct):x.nx>0;if(!ok)hid++;return ok});
   if(!b.length)return head+noData();
   var n=b.length,f=n===1?0:n>=2&&n<=4?1:2,word=({day:["obchodní den","obchodní dny","obchodních dnů"],week:["týden","týdny","týdnů"],month:["měsíc","měsíce","měsíců"],year:["rok","roky","let"]})[s.per][f],sd=new Date(st.start);
   return head+'<div class="chart" data-side="'+side+'">'+chartSVG(side,b,s.unit)+'</div><p class="note">'+n+' '+word+' s obchody'+(n>7?', starší posunem grafu doleva':'')+'. '+
@@ -543,7 +543,7 @@ function renderList(){
   var sd=new Date(st.start);
   var lastDay="";
   var rows=shown.map(function(t){var d=new Date(t.t),dk=dmy(d),gap=lastDay&&dk!==lastDay?'<tr class="tlgap"><td colspan="6"></td></tr>':'';lastDay=dk;
-    return gap+'<tr><td>'+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+'</td><td>'+(t.side==="sell"?"Sell":"Buy")+'</td><td>'+num(+t.lots||0,2)+'</td><td class="'+cls(t.pips)+'">'+(t.pips>0?"+":"")+num(+t.pips||0,1)+'</td><td class="'+cls(t.profit)+'">'+usd(t.profit,true)+'</td><td class="'+cls(t.adj)+'">'+usd(t.adj,true)+'</td></tr>'}).join("");
+    return gap+'<tr><td>'+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+'</td><td>'+(t.side==="sell"?"Sell":"Buy")+(t.sym?' · '+esc(t.sym):'')+'</td>'+(t.sym?'<td>—</td><td>—</td>':'<td>'+num(+t.lots||0,2)+'</td><td class="'+cls(t.pips)+'">'+(t.pips>0?"+":"")+num(+t.pips||0,1)+'</td>')+'<td class="'+cls(t.profit)+'">'+usd(t.profit,true)+'</td><td class="'+cls(t.adj)+'">'+usd(t.adj,true)+'</td></tr>'}).join("");
   if(!tlEl){tlEl=document.createElement("div");tlEl.className="tl";document.body.appendChild(tlEl);
     tlEl.addEventListener("click",function(e){if(e.target===tlEl||e.target.closest("[data-tl=close]"))return closeList();if(e.target.closest("[data-tl=more]")){tlState.n+=500;renderList()}});
     document.addEventListener("keydown",tlKey)}
@@ -643,7 +643,8 @@ function parseTrades(txt){
     if(!col)continue;
     var type=col.type!=null?String(r[col.type]||"").toLowerCase():"";
     if(col.type!=null&&!/buy|sell|nákup|prodej/.test(type))continue;
-    if(col.sym!=null&&!/xau|gold/i.test(r[col.sym]||""))continue;
+    var symb=col.sym!=null?String(r[col.sym]||"").trim():"",other=col.sym!=null&&!/xau|gold/i.test(symb);
+    if(other&&!symb)continue;
     var dt=toDate(r[col.close],mf);if(!dt)continue;
     var lots=col.vol!=null?toNum(r[col.vol]):0,pips=col.pips!=null?toNum(r[col.pips]):NaN;
     if(!isFinite(pips)&&col.oprice!=null&&col.cprice!=null){var op=toNum(r[col.oprice]),cp=toNum(r[col.cprice]);if(isFinite(op)&&isFinite(cp))pips=(cp-op)*(/sell|prodej/.test(type)?-1:1)/0.01}
@@ -651,9 +652,12 @@ function parseTrades(txt){
     if(isFinite(profit)){
       if(col.comm!=null&&isFinite(toNum(r[col.comm])))profit+=toNum(r[col.comm]);
       if(col.swap!=null&&isFinite(toNum(r[col.swap])))profit+=toNum(r[col.swap]);
-    }else if(isFinite(pips)&&isFinite(lots)&&lots>0){profit=pips*lots}  /* zisk skrytý: u zlata 1 pip × 1 lot = 1 USD */
+    }else if(!other&&isFinite(pips)&&isFinite(lots)&&lots>0){profit=pips*lots}  /* zisk skrytý: u zlata 1 pip × 1 lot = 1 USD */
+    else if(other&&col.pct!=null&&r[col.pct]!==""&&isFinite(toNum(r[col.pct]))){profit=0}  /* jiný symbol bez zisku v penězích: počítá se jen jeho % */
     else continue;
-    res.push({t:dt.toISOString(),side:/sell|prodej/.test(type)?"sell":"buy",lots:isFinite(lots)?lots:0,pips:isFinite(pips)?Math.round(pips*10)/10:0,profit:Math.round(profit*100)/100,pct:col.pct!=null&&r[col.pct]!==""?toNum(r[col.pct]):undefined});
+    var o={t:dt.toISOString(),side:/sell|prodej/.test(type)?"sell":"buy",lots:isFinite(lots)?lots:0,pips:isFinite(pips)?Math.round(pips*10)/10:0,profit:Math.round(profit*100)/100,pct:col.pct!=null&&r[col.pct]!==""?toNum(r[col.pct]):undefined};
+    if(other){o.sym=symb.toUpperCase();o.lots=0;o.pips=0}  /* jiné symboly než XAUUSD se do Lot a Pips nepočítají */
+    res.push(o);
   }
   /* Sloupec Gain z Myfxbooku je % vůči zůstatku ve chvíli obchodu, takže se obchody jednoho dne mezi sebou úročí.
      Aplikace % v rámci dne sčítá (vůči zůstatku na začátku dne) – proto se tu každé % přepočte na začátek dne:
@@ -686,7 +690,7 @@ function renderAdmin(){
    '<div class="box"><div class="row" style="justify-content:space-between"><h4 style="margin:0">Účet: '+esc(sel.username)+'</h4><div class="row"><button class="act ghost" data-x="view">Zobrazit panel účtu</button>'+
    (sel.id===m.id?'':'<button class="act danger" data-x="del">Smazat účet</button>')+'</div></div>'+
    '<form id="fSet"><div class="grid2" style="margin-top:12px">'+
-    '<label class="f">Začátek vyhodnocení obchodů XAUUSD<input type="datetime-local" id="eStart" value="'+esc(S.start)+'" required></label>'+
+    '<label class="f">Začátek vyhodnocení obchodů<input type="datetime-local" id="eStart" value="'+esc(S.start)+'" required></label>'+
     '<label class="f">Počáteční kapitál (USD)<input type="number" step="any" min="0" id="eCap" value="'+esc(S.capital)+'" required></label>'+
     '<label class="f">Koeficient – robotické obchodování<input type="number" step="any" min="0" id="eCoefR" value="'+esc(S.coefRobot!=null?S.coefRobot:S.coef)+'" required></label>'+
     '<label class="f">Koeficient – manuální obchodování<input type="number" step="any" min="0" id="eCoefM" value="'+esc(S.coefManual!=null?S.coefManual:S.coef)+'" required></label>'+
@@ -700,7 +704,7 @@ function renderAdmin(){
     '<label class="f">Aktuální stav – robot (USD, ručně)<input type="number" step="any" id="eRB" value="'+esc(S.robotBalance)+'" placeholder="nezadáno"></label>'+
     '<label class="f">Aktuální stav – manuál (USD, ručně)<input type="number" step="any" id="eMB" value="'+esc(S.manualBalance)+'" placeholder="nezadáno"></label>'+
    '</div><p class="hint">Koeficient násobí kladný denní výsledek obchodování: 1 = beze změny, 0,8 = o 20 % méně (např. den +10 $ se započte jako +8 $). Ztrátový den se počítá celý. Heslo si uživatel mění sám tlačítkem Změnit heslo.</p><div class="row" style="margin-top:10px"><button class="act">Uložit nastavení</button></div></form>'+
-   '<h4>Obchody</h4><p class="hint">Robot: '+sel.trades.robot.length+' obchodů · Manuál: '+sel.trades.manual.length+' obchodů. Započítávají se jen obchody na XAUUSD.</p>'+
+   '<h4>Obchody</h4><p class="hint">Robot: '+sel.trades.robot.length+' obchodů · Manuál: '+sel.trades.manual.length+' obchodů. Do výsledků v % a $ se počítají všechny obchody, do Lot a Pips jen XAUUSD.</p>'+
    '<div class="row" style="margin-top:10px"><button class="act danger" data-x="clr" data-side="robot">Smazat obchody – robot</button><button class="act danger" data-x="clr" data-side="manual">Smazat obchody – manuál</button></div>'+
    '<p class="hint" id="iMsg"></p></div></div></div>';
 }
@@ -755,7 +759,7 @@ async function adminClick(e){
     var fsd=b.dataset.side,fi=document.getElementById("fF_"+fsd),file=fi&&fi.files[0],nm=fsd==="robot"?"robot":"manuál";
     if(!file){toast("Nejdřív klikněte do kolonky a vyberte soubor CSV.");return}
     var ft;try{ft=parseTrades(await file.text())}catch(err){ft=[]}
-    if(!ft.length){var em="V souboru "+file.name+" nejsou žádné obchody XAUUSD. Tabulka musí mít sloupce s časem a ziskem nebo pipy.";msg(em);toast(em);return}
+    if(!ft.length){var em="V souboru "+file.name+" nejsou žádné obchody. Tabulka musí mít sloupce s časem a ziskem nebo pipy.";msg(em);toast(em);return}
     var fb=sel.trades[fsd].length;sel.trades[fsd]=ft;sel.settings[fsd+"Src"]="file";
     await persistSettings(sel);await persistTrades(sel,fsd);stampUpd();renderAdmin();renderMain();
     var fm="Ručně aktualizováno ("+nm+"): "+ft.length+" obchodů ze souboru "+file.name+", dříve "+fb+".";msg(fm);toast(fm);return;
@@ -771,7 +775,7 @@ async function refreshFrom(sel,side,url){
   var t;
   try{t=await fetchTrades(url)}
   catch(err){return {ok:false,msg:"Odkaz se nepodařilo načíst automaticky. Web odkazu (např. Myfxbook) nepovoluje čtení z jiné stránky. Použijte odkaz na soubor s obchody v repozitáři, nebo nahrajte soubor CSV v části Ruční aktualizace."}}
-  if(!t.length)return {ok:false,msg:"Odkaz se načetl, ale nejsou v něm žádné obchody XAUUSD v tabulce s časem a ziskem nebo pipy."};
+  if(!t.length)return {ok:false,msg:"Odkaz se načetl, ale nejsou v něm žádné obchody v tabulce s časem a ziskem nebo pipy."};
   var before=sel.trades[side].length;sel.trades[side]=t;
   stampUpd();renderAdmin();renderMain();
   var m="Aktualizováno ("+(side==="robot"?"robot":"manuál")+"): "+t.length+" obchodů, dříve "+before+".";
