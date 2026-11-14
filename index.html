@@ -266,24 +266,33 @@ function dmy(d){return d.getDate()+"."+(d.getMonth()+1)+"."+d.getFullYear()}
 function toast(m){var h=document.getElementById("toastHost");h.innerHTML='<div class="toast" role="status">'+esc(m)+'</div>';clearTimeout(toast._t);toast._t=setTimeout(function(){h.innerHTML=""},3000)}
 
 /* ---------- calculations ---------- */
+/* Přepočet obchodů na peníze uživatele. Koeficient se uplatní na týdenní výsledek obchodování (pondělí–neděle),
+   a jen když je kladný: v ziskovém týdnu se každý obchod toho týdne (ziskový i ztrátový) započte × koeficient,
+   ve ztrátovém týdnu se obchody počítají celé.
+   Procentní režim: každý obchod nese % výnosu zdrojového účtu (vůči zůstatku na začátku dne) – v rámci dne se
+   sčítají, mezi dny se úročí; týden začíná ze stavu po započtení koeficientu z předchozích týdnů. */
+function simulate(tr,base,coef,pctMode){
+  var weeks=[],wk=null,dk="";
+  tr.forEach(function(t){var d=new Date(t.t),w=periodStart(d,"week").getTime(),k=d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate();
+    if(wk!==w){wk=w;dk="";weeks.push([])}
+    var W=weeks[weeks.length-1];if(k!==dk){dk=k;W.push([])}W[W.length-1].push(t)});
+  var eq=base,out=[];
+  weeks.forEach(function(W){
+    var cur=eq,items=[];
+    W.forEach(function(day){var ds=cur;day.forEach(function(t){var raw=pctMode?ds*t.pct/100:t.profit;cur+=raw;items.push([t,raw])})});
+    var sum=cur-eq,f=sum>0?coef:1;
+    items.forEach(function(x){out.push(pctMode?Object.assign({},x[0],{srcProfit:x[0].profit,profit:x[1],adj:x[1]*f}):Object.assign({},x[0],{adj:x[1]*f}))});
+    eq+=sum*f});
+  return out;
+}
 function stats(u,side){
   var S=u.settings,T=u.transfer;
   var share=side==="robot"?+T.robotPct:100-T.robotPct;
   var base=(+S.capital||0)*share/100;
   var start=new Date(S.start).getTime()||0,cv=side==="robot"?S.coefRobot:S.coefManual,coef=+(cv==null||cv===""?S.coef:cv);if(!isFinite(coef))coef=1;
   var tr=(u.trades[side]||[]).filter(function(t){return new Date(t.t).getTime()>=start}).sort(function(a,b){return new Date(a.t)-new Date(b.t)});
-  /* Koeficient se uplatní na denní výsledek obchodování, a jen když je kladný: v ziskovém dni se každý obchod
-     toho dne (ziskový i ztrátový) započte × koeficient, ve ztrátovém dni se obchody počítají celé. */
   var pctMode=tr.length>0&&tr.every(function(t){return typeof t.pct==="number"&&isFinite(t.pct)});
-  var days=[],dk="";tr.forEach(function(t){var d=new Date(t.t),k=d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate();if(k!==dk){dk=k;days.push([])}days[days.length-1].push(t)});
-  /* Procentní režim: každý obchod nese % výnosu zdrojového účtu (vůči zůstatku na začátku dne). Stejná % se uplatní
-     na peníze uživatele (stav po započtení koeficientu): v rámci dne se sčítají, mezi dny se úročí. */
-  var eq=base,out=[];
-  days.forEach(function(day){
-    var raws=day.map(function(t){return pctMode?eq*t.pct/100:t.profit}),sum=raws.reduce(function(a,x){return a+x},0),f=sum>0?coef:1;
-    day.forEach(function(t,i){out.push(pctMode?Object.assign({},t,{srcProfit:t.profit,profit:raws[i],adj:raws[i]*f}):Object.assign({},t,{adj:raws[i]*f}))});
-    eq+=sum*f});
-  tr=out;
+  tr=simulate(tr,base,coef,pctMode);
   var pnl=0,w=0,l=0;tr.forEach(function(t){pnl+=t.adj;if(t.profit>0)w++;else if(t.profit<0)l++});
   var wd=(T.withdrawals||[]).filter(function(x){return x.side===side}).reduce(function(a,x){return a+(+x.amount||0)},0);
   var mb=side==="robot"?S.robotBalance:S.manualBalance;
@@ -314,13 +323,13 @@ function bucketsAll(u,side,st,per){
   var post=buckets(st,per),map={},out=[];post.forEach(function(b){b.pre=false;map[b.start.getTime()]=b;out.push(b)});
   var pre=(u.trades[side]||[]).filter(function(t){return new Date(t.t).getTime()<st.start}).sort(function(a,b){return new Date(a.t)-new Date(b.t)});
   var hasPct=pre.length>0&&pre.every(function(t){return typeof t.pct==="number"&&isFinite(t.pct)}),pm={},po=[];
-  pre.forEach(function(t){var d=new Date(t.t),s=periodStart(d,per),k=s.getTime(),dk=d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate();
-    if(!pm[k]){pm[k]={start:s,pips:0,lots:0,n:0,nx:0,days:{},dord:[]};po.push(k)}
+  /* % před začátkem: stejný výpočet jako po začátku, jen s pomyslným vkladem 1 od prvního obchodu v datech */
+  var sim=hasPct?simulate(pre,1,st.coef,true):pre,bal=1;
+  sim.forEach(function(t){var s=periodStart(new Date(t.t),per),k=s.getTime();
+    if(!pm[k]){pm[k]={start:s,pips:0,lots:0,n:0,nx:0,adj:0,bal:bal};po.push(k)}
     var b=pm[k];b.pips+=(+t.pips||0);b.lots+=(+t.lots||0);b.n++;if(!t.sym)b.nx++;
-    if(hasPct){if(!(dk in b.days)){b.days[dk]=0;b.dord.push(dk)}b.days[dk]+=t.pct}});
-  po.forEach(function(k){var b=pm[k],g=NaN;
-    if(hasPct){g=1;b.dord.forEach(function(dk){var r=b.days[dk];g*=1+(r>0?r*st.coef:r)/100});g=(g-1)*100}  /* v rámci dne se % sčítají, kladný den × koeficient, mezi dny se úročí */
-    var m=map[k];
+    if(hasPct){b.adj+=t.adj;bal+=t.adj}});
+  po.forEach(function(k){var b=pm[k],g=hasPct&&b.bal>0?b.adj/b.bal*100:NaN,m=map[k];
     if(m){m.pips+=b.pips;m.lots+=b.lots;m.n+=b.n;m.nx+=b.nx;m.pct=isFinite(g)&&isFinite(m.pct)?((1+g/100)*(1+m.pct/100)-1)*100:m.pct}
     else out.push({start:b.start,profit:NaN,pips:b.pips,lots:b.lots,n:b.n,nx:b.nx,pct:g,pre:true,label:bucketLabel(b.start,per)})});
   return out.sort(function(a,b){return a.start-b.start});
@@ -423,7 +432,7 @@ function viewInv(u,side,st){
    tile("Aktuální PnL",'<span class="'+cls(st.pnl)+'">'+usd(st.pnl,true)+'</span>',pct(st.base?st.pnl/st.base*100:NaN,true))+
    tile("Winrate",isFinite(st.winrate)?num(st.winrate,1)+" %":"—",st.wins+" ziskových · "+st.losses+" ztrátových")+
    (mb!=null?tile("Skutečný zůstatek (zadaný ručně)",usd(mb),"rozdíl proti výpočtu "+usd(mb-st.current,true),true):"")+
-   '</div><p class="note">Vyhodnocuje se od '+dmy(sd)+' '+pad(sd.getHours())+':'+pad(sd.getMinutes())+'. '+(st.pctMode?'Výsledky jsou procentní výnos zdrojového účtu přepočtený na vaši investici. ':'')+''+(st.coef===1?'Koeficient 1 – bez úprav.':'Kladný denní výsledek se násobí koeficientem '+num(st.coef,2)+' (o '+num((1-st.coef)*100,0)+' % méně), ztrátové dny se počítají celé.')+'</p>';
+   '</div><p class="note">Vyhodnocuje se od '+dmy(sd)+' '+pad(sd.getHours())+':'+pad(sd.getMinutes())+'. '+(st.pctMode?'Výsledky jsou procentní výnos zdrojového účtu přepočtený na vaši investici. ':'')+''+(st.coef===1?'Koeficient 1 – bez úprav.':'Kladný týdenní výsledek se násobí koeficientem '+num(st.coef,2)+' (o '+num((1-st.coef)*100,0)+' % méně), ztrátové týdny se počítají celé.')+'</p>';
 }
 function viewGraf(u,side,st){
   var s=ui[side];
@@ -703,7 +712,7 @@ function renderAdmin(){
     '<p class="hint sec">Platí zdroj, u kterého jste naposledy stiskli Aktualizovat. Nyní – robot: '+srcName(S,"robot")+', manuál: '+srcName(S,"manual")+'.</p>'+
     '<label class="f">Aktuální stav – robot (USD, ručně)<input type="number" step="any" id="eRB" value="'+esc(S.robotBalance)+'" placeholder="nezadáno"></label>'+
     '<label class="f">Aktuální stav – manuál (USD, ručně)<input type="number" step="any" id="eMB" value="'+esc(S.manualBalance)+'" placeholder="nezadáno"></label>'+
-   '</div><p class="hint">Koeficient násobí kladný denní výsledek obchodování: 1 = beze změny, 0,8 = o 20 % méně (např. den +10 $ se započte jako +8 $). Ztrátový den se počítá celý. Heslo si uživatel mění sám tlačítkem Změnit heslo.</p><div class="row" style="margin-top:10px"><button class="act">Uložit nastavení</button></div></form>'+
+   '</div><p class="hint">Koeficient násobí kladný týdenní výsledek obchodování (pondělí–neděle): 1 = beze změny, 0,8 = o 20 % méně (např. týden +10 $ se započte jako +8 $). Ztrátový týden se počítá celý. Heslo si uživatel mění sám tlačítkem Změnit heslo.</p><div class="row" style="margin-top:10px"><button class="act">Uložit nastavení</button></div></form>'+
    '<h4>Obchody</h4><p class="hint">Robot: '+sel.trades.robot.length+' obchodů · Manuál: '+sel.trades.manual.length+' obchodů. Do výsledků v % a $ se počítají všechny obchody, do Lot a Pips jen XAUUSD.</p>'+
    '<div class="row" style="margin-top:10px"><button class="act danger" data-x="clr" data-side="robot">Smazat obchody – robot</button><button class="act danger" data-x="clr" data-side="manual">Smazat obchody – manuál</button></div>'+
    '<p class="hint" id="iMsg"></p></div></div></div>';
