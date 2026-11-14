@@ -116,7 +116,13 @@ button.src{background:none;border:0;border-bottom:1px dashed currentColor;paddin
 .chart{width:100%;display:flex;align-items:flex-start}
 .chart svg{display:block;height:auto}
 .chart .yax{flex:0 0 10.9375%;width:10.9375%}
-.chartscroll{flex:1;min-width:0;overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--c) transparent}
+/* posuvník je skrytý, aby graf nezabíral výšku navíc; posouvá se šipkami pod grafem, kolečkem, tažením myší nebo prstem */
+.chartscroll{flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+.chartscroll::-webkit-scrollbar{display:none}
+.chartscroll.pan{cursor:grab}.chartscroll.drag{cursor:grabbing;user-select:none}
+.chnav{float:right;display:inline-flex;gap:.4em;margin-left:.8em}
+.chnav button{border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--fg);border-radius:.5em;padding:0 .7em;font-size:1.15em;line-height:1.3}
+.chnav button:hover{border-color:var(--c);color:var(--hi)}
 .empty{border:1px dashed color-mix(in srgb,var(--hi) 45%,transparent);border-radius:1em;padding:1.4em 1em;text-align:center;color:var(--muted);line-height:1.6;background:rgba(0,0,0,.25)}
 
 /* forms */
@@ -441,7 +447,7 @@ function viewGraf(u,side,st){
   var b=all.filter(function(x){var ok=s.unit==="usd"?!x.pre:s.unit==="pct"?isFinite(x.pct):x.nx>0;if(!ok)hid++;return ok});
   if(!b.length)return head+noData();
   var n=b.length,f=n===1?0:n>=2&&n<=4?1:2,word=({day:["obchodní den","obchodní dny","obchodních dnů"],week:["týden","týdny","týdnů"],month:["měsíc","měsíce","měsíců"],year:["rok","roky","let"]})[s.per][f],sd=new Date(st.start);
-  return head+'<div class="chart" data-side="'+side+'">'+chartSVG(side,b,s.unit)+'</div><p class="note">'+n+' '+word+' s obchody'+(n>7?', starší posunem grafu doleva':'')+'. '+
+  return head+'<div class="chart" data-side="'+side+'">'+chartSVG(side,b,s.unit)+'</div><p class="note">'+n+' '+word+' s obchody'+(n>7?', starší posunem grafu doleva':'')+'. '+(n>7?'<span class="chnav"><button type="button" data-chnav="-1" aria-label="Starší období" title="Starší období">‹</button><button type="button" data-chnav="1" aria-label="Novější období" title="Novější období">›</button></span>':'')+
     (hid&&s.unit==="usd"?'Částky v $ jsou jen od '+dmy(sd)+'.':hid?'Starší období nemají údaj o %.':n>7?'':'Hodnota nad sloupcem je ve zvolené jednotce.')+'</p>';
 }
 /* Graf se kreslí ve dvou krocích: chartSVG připraví osu a posuvnou plochu, paintChart do nich vykreslí sloupce.
@@ -480,7 +486,18 @@ function initCharts(){
   document.querySelectorAll(".chart").forEach(function(el){var sc=el.querySelector(".chartscroll");if(!sc)return;
     if(sc._init){el._key=null;return paintChart(el)}
     sc._init=true;sc.scrollLeft=sc.scrollWidth;paintChart(el);
-    var q=false;sc.addEventListener("scroll",function(){if(q)return;q=true;requestAnimationFrame(function(){q=false;paintChart(el)})},{passive:true})});
+    var q=false;sc.addEventListener("scroll",function(){if(q)return;q=true;requestAnimationFrame(function(){q=false;paintChart(el)})},{passive:true});
+    if(sc.scrollWidth>sc.clientWidth+1){
+      sc.classList.add("pan");
+      /* kolečko myši posouvá graf do stran */
+      sc.addEventListener("wheel",function(e){var d=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY;if(!d)return;
+        var max=sc.scrollWidth-sc.clientWidth;if((d<0&&sc.scrollLeft<=0)||(d>0&&sc.scrollLeft>=max-1))return;e.preventDefault();sc.scrollLeft+=d},{passive:false});
+      /* tažení myší */
+      var sx=0,sl=0,on=false;
+      sc.addEventListener("pointerdown",function(e){if(e.pointerType!=="mouse"||e.button!==0)return;on=true;sx=e.clientX;sl=sc.scrollLeft;sc.classList.add("drag");sc.setPointerCapture(e.pointerId)});
+      sc.addEventListener("pointermove",function(e){if(on)sc.scrollLeft=sl-(e.clientX-sx)});
+      var end=function(){on=false;sc.classList.remove("drag")};sc.addEventListener("pointerup",end);sc.addEventListener("pointercancel",end);
+    }});
 }
 function niceStep(r){if(r<=0)return 1;var p=Math.pow(10,Math.floor(Math.log10(r))),f=r/p;return (f<=1?1:f<=2?2:f<=5?5:10)*p}
 function viewObch(u,side,st){
@@ -567,6 +584,7 @@ function renderList(){
 app.addEventListener("click",function(e){
   var t=e.target.closest("button");if(!t||!session)return;
   var a=t.dataset.a;
+  if(t.dataset.chnav){var cs=t.closest(".content").querySelector(".chartscroll");if(cs)cs.scrollBy({left:(+t.dataset.chnav)*cs.clientWidth*0.86,behavior:"smooth"});return}
   if(t.dataset.tab){ui[t.dataset.side].tab=t.dataset.tab;saveUi();return renderMain()}
   if(t.dataset.k){ui[t.dataset.side][t.dataset.k]=t.dataset.v;saveUi();return renderMain()}
   if(a==="logout")return logout();
