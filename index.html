@@ -561,7 +561,9 @@ function rowsFromText(txt){
     doc.querySelectorAll("tr").forEach(function(tr){var cells=[];tr.querySelectorAll("th,td").forEach(function(c){var n=+(c.getAttribute("colspan")||1);cells.push(c.textContent.trim());for(var i=1;i<n;i++)cells.push("")});out.push(cells)});return out}
   var lines=txt.split(/\r?\n/).filter(function(l){return l.trim()});if(!lines.length)return [];
   var first=lines[0],d=first.split("\t").length>1?"\t":first.split(";").length>first.split(",").length?";":",";
-  return lines.map(function(l){var r=[],cur="",q=false;for(var i=0;i<l.length;i++){var c=l[i];if(c==='"'){q=!q;continue}if(c===d&&!q){r.push(cur.trim());cur="";continue}cur+=c}r.push(cur.trim());return r});
+  function split(l){var r=[],cur="",q=false;for(var i=0;i<l.length;i++){var c=l[i];if(c==='"'){q=!q;continue}if(c===d&&!q){r.push(cur.trim());cur="";continue}cur+=c}r.push(cur.trim());return r}
+  /* export z Myfxbooku balí každý řádek s obchodem celý do uvozovek – takový řádek se rozbalí a rozdělí znovu */
+  return lines.map(function(l){var r=split(l);if(r.length===1&&l.length>2&&l[0]==='"'&&l[l.length-1]==='"')r=split(l.slice(1,-1).replace(/""/g,'"'));return r});
 }
 function parseTrades(txt){
   var rows=rowsFromText(txt),res=[],col=null,mf=false;
@@ -580,7 +582,7 @@ function parseTrades(txt){
         if(/^pips?$/.test(c))col.pips=j;
         if(/^(profit|zisk|net profit|p\/l)$/.test(c))col.profit=j;
         if(/commission|komise|provize/.test(c))col.comm=j;
-        if(/^(pct|gain %?|výnos %?)$/.test(c))col.pct=j;
+        if(/^(pct|gain( ?%)?|výnos %?)$/.test(c))col.pct=j;
         if(/^swap/.test(c))col.swap=j;
         if(/close.?price/.test(c))col.cprice=j;else if(/open.?price/.test(c))col.oprice=j;else if(/^price$|^cena$/.test(c))col.price.push(j);
       });
