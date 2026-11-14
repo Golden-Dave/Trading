@@ -72,9 +72,9 @@ def main(gpath, trades_csv):
     if good:
         bal = sorted(good[:5])[len(good[:5]) // 2]
     for d, b, r in cands:
-        if b and bal and 0.33 < b / bal < 3:
-            bal = b
-        elif b and not bal:
+        # Spolehlivý den určuje zůstatek přímo (součet % jeho obchodů pak přesně odpovídá dennímu výnosu z křivky).
+        # Dřív se odhad odlišný víc než 3× zahazoval – po velkém výběru z účtu se tak zasekl na staré hodnotě.
+        if b:
             bal = b
         est[d] = bal
         if bal:
