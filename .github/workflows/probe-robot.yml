@@ -1,0 +1,15 @@
+name: Zkouška – stažení výpisu robota
+# Jednorázová zkouška, jestli GitHub dokáže stáhnout veřejný výpis Myfxbooku. Nic neukládá.
+on:
+  workflow_dispatch:
+  push:
+    branches: [test-robot-download]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/probe_statement.py 12034345
