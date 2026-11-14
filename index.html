@@ -614,7 +614,7 @@ function rowsFromText(txt){
   return lines.map(function(l){var r=split(l);if(r.length===1&&l.length>2&&l[0]==='"'&&l[l.length-1]==='"')r=split(l.slice(1,-1).replace(/""/g,'"'));return r});
 }
 function parseTrades(txt){
-  var rows=rowsFromText(txt),res=[],col=null,mf=false;
+  var rows=rowsFromText(txt),res=[],col=null,mf=false,seq=false;
   rows.forEach(function(r){r.forEach(function(c){var m=String(c).match(/^(\d{1,2})\.(\d{1,2})\.\d{4}/);if(m){if(+m[2]>12)mf=true;}})});
   for(var i=0;i<rows.length;i++){
     var r=rows[i],low=r.map(function(c){return c.toLowerCase()});
@@ -630,7 +630,7 @@ function parseTrades(txt){
         if(/^pips?$/.test(c))col.pips=j;
         if(/^(profit|zisk|net profit|p\/l)$/.test(c))col.profit=j;
         if(/commission|komise|provize/.test(c))col.comm=j;
-        if(/^(pct|gain( ?%)?|výnos %?)$/.test(c))col.pct=j;
+        if(/^(pct|gain( ?%)?|výnos %?)$/.test(c)){col.pct=j;if(/^gain/.test(c))seq=true}
         if(/^swap/.test(c))col.swap=j;
         if(/close.?price/.test(c))col.cprice=j;else if(/open.?price/.test(c))col.oprice=j;else if(/^price$|^cena$/.test(c))col.price.push(j);
       });
@@ -654,6 +654,14 @@ function parseTrades(txt){
     }else if(isFinite(pips)&&isFinite(lots)&&lots>0){profit=pips*lots}  /* zisk skrytý: u zlata 1 pip × 1 lot = 1 USD */
     else continue;
     res.push({t:dt.toISOString(),side:/sell|prodej/.test(type)?"sell":"buy",lots:isFinite(lots)?lots:0,pips:isFinite(pips)?Math.round(pips*10)/10:0,profit:Math.round(profit*100)/100,pct:col.pct!=null&&r[col.pct]!==""?toNum(r[col.pct]):undefined});
+  }
+  /* Sloupec Gain z Myfxbooku je % vůči zůstatku ve chvíli obchodu, takže se obchody jednoho dne mezi sebou úročí.
+     Aplikace % v rámci dne sčítá (vůči zůstatku na začátku dne) – proto se tu každé % přepočte na začátek dne:
+     součet za den pak vyjde stejně jako postupné úročení, a měsíce sedí s růstem účtu na Myfxbooku. */
+  if(seq&&res.every(function(o){return typeof o.pct==="number"&&isFinite(o.pct)})){
+    var ord=res.slice().sort(function(a,b){return new Date(a.t)-new Date(b.t)}),dk="",run=1;
+    ord.forEach(function(o){var d=new Date(o.t),k=d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate();if(k!==dk){dk=k;run=1}
+      var g=o.pct/100;o.pct=Math.round(run*g*1e7)/1e5;run*=1+g});
   }
   return res;
 }
