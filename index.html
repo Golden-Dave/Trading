@@ -434,28 +434,46 @@ function viewGraf(u,side,st){
   var b=all.filter(function(x){var ok=s.unit==="usd"?!x.pre:s.unit==="pct"?isFinite(x.pct):true;if(!ok)hid++;return ok});
   if(!b.length)return head+noData();
   var n=b.length,f=n===1?0:n>=2&&n<=4?1:2,word=({day:["obchodní den","obchodní dny","obchodních dnů"],week:["týden","týdny","týdnů"],month:["měsíc","měsíce","měsíců"],year:["rok","roky","let"]})[s.per][f],sd=new Date(st.start);
-  return head+'<div class="chart">'+chartSVG(b,s.unit)+'</div><p class="note">'+n+' '+word+' s obchody'+(n>7?', starší posunem grafu doleva':'')+'. '+
+  return head+'<div class="chart" data-side="'+side+'">'+chartSVG(side,b,s.unit)+'</div><p class="note">'+n+' '+word+' s obchody'+(n>7?', starší posunem grafu doleva':'')+'. '+
     (hid&&s.unit==="usd"?'Částky v $ jsou jen od '+dmy(sd)+'.':hid?'Starší období nemají údaj o %.':n>7?'':'Hodnota nad sloupcem je ve zvolené jednotce.')+'</p>';
 }
-function chartSVG(b,unit){
-  var H=262,L=70,R=10,T=34,B=44,VW=570,n=b.length,slot=n>7?80:(VW-R)/Math.max(n,1),PW=n>7?n*slot+R:VW;
-  var vals=b.map(function(x){return unit==="pct"?x.pct:unit==="pips"?x.pips:unit==="lot"?x.lots:x.profit}).map(function(v){return isFinite(v)?v:0});
-  var mn=Math.min(0,Math.min.apply(null,vals)),mx=Math.max(0,Math.max.apply(null,vals));if(mn===mx)mx=1;
+/* Graf se kreslí ve dvou krocích: chartSVG připraví osu a posuvnou plochu, paintChart do nich vykreslí sloupce.
+   Rozsah osy Y se počítá jen ze sloupců, které jsou právě vidět, a při posunu grafu se přepočítává. */
+var chartData={},CH={H:262,L:70,R:10,T:34,B:44,VW:570};
+function chartSVG(side,b,unit){
+  var n=b.length,slot=n>7?80:(CH.VW-CH.R)/Math.max(n,1),PW=n>7?n*slot+CH.R:CH.VW;
+  chartData[side]={b:b,unit:unit,slot:slot,PW:PW,
+    vals:b.map(function(x){return unit==="pct"?x.pct:unit==="pips"?x.pips:unit==="lot"?x.lots:x.profit}).map(function(v){return isFinite(v)?v:0})};
+  return '<svg class="yax" viewBox="0 0 '+CH.L+' '+CH.H+'" aria-hidden="true"></svg><div class="chartscroll"><svg viewBox="0 0 '+PW+' '+CH.H+'" style="width:'+(PW/CH.VW*100)+'%" role="img" aria-label="Sloupcový graf výsledků"></svg></div>';
+}
+function paintChart(el){
+  var d=chartData[el.dataset.side],sc=el.querySelector(".chartscroll");if(!d||!sc)return;
+  var b=d.b,unit=d.unit,vals=d.vals,slot=d.slot,PW=d.PW,n=b.length,H=CH.H,L=CH.L,R=CH.R,T=CH.T,B=CH.B,bw=Math.min(54,slot*0.58);
+  var k=sc.scrollWidth>0?PW/sc.scrollWidth:1,x0=sc.scrollLeft*k,x1=x0+(sc.clientWidth||sc.scrollWidth)*k;
+  var i0=Math.max(0,Math.min(n-1,Math.floor((x0+bw/2)/slot))),i1=Math.max(i0,Math.min(n-1,Math.ceil((x1-bw/2)/slot)-1));
+  if((i0+.5)*slot+bw/2<=x0+1&&i0<i1)i0++;
+  var vis=vals.slice(i0,i1+1),mn=Math.min(0,Math.min.apply(null,vis)),mx=Math.max(0,Math.max.apply(null,vis));if(mn===mx)mx=1;
+  var pad=(mx-mn)*0.12;if(mx>0)mx+=pad;if(mn<0)mn-=pad;  /* místo na popisek nad/pod sloupcem */
   var step=niceStep((mx-mn)/5),lo=Math.floor(mn/step)*step,hi=Math.ceil(mx/step)*step;
+  var key=i0+"|"+i1+"|"+lo+"|"+hi;if(el._key===key)return;el._key=key;
   var y=function(v){return T+(hi-v)/(hi-lo)*(H-T-B)};
-  var axisCol="rgba(234,241,255,.55)",grid="rgba(255,255,255,.08)",dec=step<1?(step<0.1?2:1):0;
-  var ax='<svg class="yax" viewBox="0 0 '+L+' '+H+'" aria-hidden="true">',g='<svg viewBox="0 0 '+PW+' '+H+'" style="width:'+(PW/VW*100)+'%" role="img" aria-label="Sloupcový graf výsledků">';
-  for(var v=lo;v<=hi+step/2;v+=step){var yy=y(v);g+='<line x1="0" x2="'+(PW-R)+'" y1="'+yy+'" y2="'+yy+'" stroke="'+(Math.abs(v)<1e-9?axisCol:grid)+'"/>';
-    ax+='<text x="'+(L-8)+'" y="'+(yy+4)+'" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="14" fill="'+axisCol+'">'+num(v,dec)+(unit==="pct"?"%":unit==="usd"?"$":"")+'</text>'}
-  ax+='<text x="10" y="18" font-family="Nunito,sans-serif" font-size="14" font-weight="700" fill="'+axisCol+'">'+{pct:"%",pips:"pips",lot:"lot",usd:"USD"}[unit]+'</text></svg>';
-  var bw=Math.min(54,slot*0.58);
-  b.forEach(function(x,i){var v=vals[i],cx=slot*(i+.5),y0=y(0),y1=y(v),top=Math.min(y0,y1),hgt=Math.max(Math.abs(y1-y0),1.5);
-    var sv=unit==="lot"?(isFinite(x.profit)?x.profit:isFinite(x.pct)?x.pct:x.pips):v,col=sv>=0?"#2fe28c":"#ff4d61";
-    var lab=unit==="pct"?pct(v,true):unit==="pips"?(v>0?"+":"")+num(v,0)+" pips":unit==="lot"?num(v,2)+" lot":usd(x.profit,true).replace(",00","");
+  var axisCol="rgba(234,241,255,.55)",grid="rgba(255,255,255,.08)",dec=step<1?(step<0.1?2:1):0,ax="",g="";
+  for(var v=lo;v<=hi+step/2;v+=step){var yy=y(v);g+='<line x1="0" x2="'+(PW-R)+'" y1="'+yy+'" y2="'+yy+'" stroke="'+(Math.abs(v)<step/1e6?axisCol:grid)+'"/>';
+    ax+='<text x="'+(L-8)+'" y="'+(yy+4)+'" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="14" fill="'+axisCol+'">'+num(Math.abs(v)<step/1e6?0:v,dec)+(unit==="pct"?"%":unit==="usd"?"$":"")+'</text>'}
+  ax+='<text x="10" y="18" font-family="Nunito,sans-serif" font-size="14" font-weight="700" fill="'+axisCol+'">'+{pct:"%",pips:"pips",lot:"lot",usd:"USD"}[unit]+'</text>';
+  for(var i=Math.max(0,i0-1);i<=Math.min(n-1,i1+1);i++){var x=b[i],val=Math.max(lo,Math.min(hi,vals[i])),cx=slot*(i+.5),y0=y(0),y1=y(val),top=Math.min(y0,y1),hgt=Math.max(Math.abs(y1-y0),1.5);
+    var sv=unit==="lot"?(isFinite(x.profit)?x.profit:isFinite(x.pct)?x.pct:x.pips):vals[i],col=sv>=0?"#2fe28c":"#ff4d61",vv=vals[i];
+    var lab=unit==="pct"?pct(vv,true):unit==="pips"?(vv>0?"+":"")+num(vv,0)+" pips":unit==="lot"?num(vv,2)+" lot":usd(x.profit,true).replace(",00","");
     g+='<rect x="'+(cx-bw/2)+'" y="'+top+'" width="'+bw+'" height="'+hgt+'" rx="4" fill="'+col+'" fill-opacity=".85" style="filter:drop-shadow(0 0 6px '+col+')"/>';
-    g+='<text x="'+cx+'" y="'+(v>=0?top-7:top+hgt+15)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="'+(n>7?12:14)+'" font-weight="600" fill="'+col+'">'+lab+'</text>';
-    g+='<text x="'+cx+'" y="'+(H-B+20)+'" text-anchor="middle" font-family="Nunito,sans-serif" font-size="'+(n>7?12.5:14)+'" fill="'+axisCol+'">'+x.label+'</text>'});
-  return ax+'<div class="chartscroll">'+g+'</svg></div>';
+    g+='<text x="'+cx+'" y="'+(vv>=0?top-7:top+hgt+15)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="'+(n>7?12:14)+'" font-weight="600" fill="'+col+'">'+lab+'</text>';
+    g+='<text x="'+cx+'" y="'+(H-B+20)+'" text-anchor="middle" font-family="Nunito,sans-serif" font-size="'+(n>7?12.5:14)+'" fill="'+axisCol+'">'+x.label+'</text>'}
+  el.querySelector(".yax").innerHTML=ax;sc.firstChild.innerHTML=g;
+}
+function initCharts(){
+  document.querySelectorAll(".chart").forEach(function(el){var sc=el.querySelector(".chartscroll");if(!sc)return;
+    if(sc._init){el._key=null;return paintChart(el)}
+    sc._init=true;sc.scrollLeft=sc.scrollWidth;paintChart(el);
+    var q=false;sc.addEventListener("scroll",function(){if(q)return;q=true;requestAnimationFrame(function(){q=false;paintChart(el)})},{passive:true})});
 }
 function niceStep(r){if(r<=0)return 1;var p=Math.pow(10,Math.floor(Math.log10(r))),f=r/p;return (f<=1?1:f<=2?2:f<=5?5:10)*p}
 function viewObch(u,side,st){
@@ -508,7 +526,7 @@ function placeMix(inp){
   if(!b.hidden&&!o.hidden){var bb=parseFloat(b.style.left)+b.offsetWidth+8,ol=parseFloat(o.style.left);
     if(bb>ol){var sh=(bb-ol)/2;b.style.left=Math.max(0,parseFloat(b.style.left)-sh)+"px";o.style.left=Math.min(W-o.offsetWidth,ol+sh)+"px"}}
 }
-function placeAllMix(){document.querySelectorAll("input.mix").forEach(placeMix);document.querySelectorAll(".chartscroll").forEach(function(c){c.scrollLeft=c.scrollWidth})}
+function placeAllMix(){document.querySelectorAll("input.mix").forEach(placeMix);initCharts()}
 window.addEventListener("resize",placeAllMix);
 function slHint(T,cap){
   if(T.slUnit!=="%")return "";
