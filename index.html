@@ -272,20 +272,18 @@ function stats(u,side){
   var base=(+S.capital||0)*share/100;
   var start=new Date(S.start).getTime()||0,cv=side==="robot"?S.coefRobot:S.coefManual,coef=+(cv==null||cv===""?S.coef:cv);if(!isFinite(coef))coef=1;
   var tr=(u.trades[side]||[]).filter(function(t){return new Date(t.t).getTime()>=start}).sort(function(a,b){return new Date(a.t)-new Date(b.t)});
-  /* koeficient se uplatní jen na čistý zisk: kladný celkový výsledek × koeficient, ztráta zůstává celá */
-  function net(x){return x>0?x*coef:x}
+  /* Koeficient se uplatní na denní výsledek obchodování, a jen když je kladný: v ziskovém dni se každý obchod
+     toho dne (ziskový i ztrátový) započte × koeficient, ve ztrátovém dni se obchody počítají celé. */
   var pctMode=tr.length>0&&tr.every(function(t){return typeof t.pct==="number"&&isFinite(t.pct)});
-  if(pctMode){
-    /* Procentní režim: každý obchod nese % výnosu zdrojového účtu (vůči zůstatku na začátku dne).
-       Stejná % se uplatní na peníze uživatele: v rámci dne se sčítají, mezi dny se úročí. */
-    var eq=base,dayStart=base,dk="";
-    tr=tr.map(function(t){var d=new Date(t.t),k=d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate();
-      if(k!==dk){dk=k;dayStart=eq}
-      var raw=dayStart*t.pct/100,adj=net(eq-base+raw)-net(eq-base);eq+=raw;
-      return Object.assign({},t,{srcProfit:t.profit,profit:raw,adj:adj})});
-  }else{
-    var cum=0;tr=tr.map(function(t){var adj=net(cum+t.profit)-net(cum);cum+=t.profit;return Object.assign({},t,{adj:adj})});
-  }
+  var days=[],dk="";tr.forEach(function(t){var d=new Date(t.t),k=d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate();if(k!==dk){dk=k;days.push([])}days[days.length-1].push(t)});
+  /* Procentní režim: každý obchod nese % výnosu zdrojového účtu (vůči zůstatku na začátku dne). Stejná % se uplatní
+     na peníze uživatele (stav po započtení koeficientu): v rámci dne se sčítají, mezi dny se úročí. */
+  var eq=base,out=[];
+  days.forEach(function(day){
+    var raws=day.map(function(t){return pctMode?eq*t.pct/100:t.profit}),sum=raws.reduce(function(a,x){return a+x},0),f=sum>0?coef:1;
+    day.forEach(function(t,i){out.push(pctMode?Object.assign({},t,{srcProfit:t.profit,profit:raws[i],adj:raws[i]*f}):Object.assign({},t,{adj:raws[i]*f}))});
+    eq+=sum*f});
+  tr=out;
   var pnl=0,w=0,l=0;tr.forEach(function(t){pnl+=t.adj;if(t.profit>0)w++;else if(t.profit<0)l++});
   var wd=(T.withdrawals||[]).filter(function(x){return x.side===side}).reduce(function(a,x){return a+(+x.amount||0)},0);
   var mb=side==="robot"?S.robotBalance:S.manualBalance;
@@ -321,7 +319,7 @@ function bucketsAll(u,side,st,per){
     var b=pm[k];b.pips+=(+t.pips||0);b.lots+=(+t.lots||0);b.n++;
     if(hasPct){if(!(dk in b.days)){b.days[dk]=0;b.dord.push(dk)}b.days[dk]+=t.pct}});
   po.forEach(function(k){var b=pm[k],g=NaN;
-    if(hasPct){g=1;b.dord.forEach(function(dk){g*=1+b.days[dk]/100});g=(g-1)*100;if(g>0)g*=st.coef}  /* v rámci dne se % sčítají, mezi dny úročí; koeficient jen na zisk */
+    if(hasPct){g=1;b.dord.forEach(function(dk){var r=b.days[dk];g*=1+(r>0?r*st.coef:r)/100});g=(g-1)*100}  /* v rámci dne se % sčítají, kladný den × koeficient, mezi dny se úročí */
     var m=map[k];
     if(m){m.pips+=b.pips;m.lots+=b.lots;m.n+=b.n;m.pct=isFinite(g)&&isFinite(m.pct)?((1+g/100)*(1+m.pct/100)-1)*100:m.pct}
     else out.push({start:b.start,profit:NaN,pips:b.pips,lots:b.lots,n:b.n,pct:g,pre:true,label:bucketLabel(b.start,per)})});
@@ -425,7 +423,7 @@ function viewInv(u,side,st){
    tile("Aktuální PnL",'<span class="'+cls(st.pnl)+'">'+usd(st.pnl,true)+'</span>',pct(st.base?st.pnl/st.base*100:NaN,true))+
    tile("Winrate",isFinite(st.winrate)?num(st.winrate,1)+" %":"—",st.wins+" ziskových · "+st.losses+" ztrátových")+
    (mb!=null?tile("Skutečný zůstatek (zadaný ručně)",usd(mb),"rozdíl proti výpočtu "+usd(mb-st.current,true),true):"")+
-   '</div><p class="note">Vyhodnocuje se od '+dmy(sd)+' '+pad(sd.getHours())+':'+pad(sd.getMinutes())+'. '+(st.pctMode?'Výsledky jsou procentní výnos zdrojového účtu přepočtený na vaši investici. ':'')+''+(st.coef===1?'Koeficient 1 – bez úprav.':'Čistý zisk se násobí koeficientem '+num(st.coef,2)+' (o '+num((1-st.coef)*100,0)+' % méně), ztráta se počítá celá.')+'</p>';
+   '</div><p class="note">Vyhodnocuje se od '+dmy(sd)+' '+pad(sd.getHours())+':'+pad(sd.getMinutes())+'. '+(st.pctMode?'Výsledky jsou procentní výnos zdrojového účtu přepočtený na vaši investici. ':'')+''+(st.coef===1?'Koeficient 1 – bez úprav.':'Kladný denní výsledek se násobí koeficientem '+num(st.coef,2)+' (o '+num((1-st.coef)*100,0)+' % méně), ztrátové dny se počítají celé.')+'</p>';
 }
 function viewGraf(u,side,st){
   var s=ui[side];
@@ -693,7 +691,7 @@ function renderAdmin(){
     '<p class="hint sec">Platí zdroj, u kterého jste naposledy stiskli Aktualizovat. Nyní – robot: '+srcName(S,"robot")+', manuál: '+srcName(S,"manual")+'.</p>'+
     '<label class="f">Aktuální stav – robot (USD, ručně)<input type="number" step="any" id="eRB" value="'+esc(S.robotBalance)+'" placeholder="nezadáno"></label>'+
     '<label class="f">Aktuální stav – manuál (USD, ručně)<input type="number" step="any" id="eMB" value="'+esc(S.manualBalance)+'" placeholder="nezadáno"></label>'+
-   '</div><p class="hint">Koeficient násobí čistý zisk: 1 = beze změny, 0,8 = o 20 % méně (např. +10 % se zobrazí jako +8 %). Ztráta se počítá celá. Heslo si uživatel mění sám tlačítkem Změnit heslo.</p><div class="row" style="margin-top:10px"><button class="act">Uložit nastavení</button></div></form>'+
+   '</div><p class="hint">Koeficient násobí kladný denní výsledek obchodování: 1 = beze změny, 0,8 = o 20 % méně (např. den +10 $ se započte jako +8 $). Ztrátový den se počítá celý. Heslo si uživatel mění sám tlačítkem Změnit heslo.</p><div class="row" style="margin-top:10px"><button class="act">Uložit nastavení</button></div></form>'+
    '<h4>Obchody</h4><p class="hint">Robot: '+sel.trades.robot.length+' obchodů · Manuál: '+sel.trades.manual.length+' obchodů. Započítávají se jen obchody na XAUUSD.</p>'+
    '<div class="row" style="margin-top:10px"><button class="act danger" data-x="clr" data-side="robot">Smazat obchody – robot</button><button class="act danger" data-x="clr" data-side="manual">Smazat obchody – manuál</button></div>'+
    '<p class="hint" id="iMsg"></p></div></div></div>';
