@@ -23,6 +23,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 .wrap{max-width:1680px;margin:0 auto}
+/* na širokém, ale nízkém okně se panel zmenší tak, aby se vešel na výšku bez posouvání (90px = okraje a spodní lišta) */
+@media (min-width:760px){.wrap{max-width:max(880px,min(1680px,calc((100vh - 90px)*16/9)));max-width:max(880px,min(1680px,calc((100dvh - 90px)*16/9)))}}
 
 /* top bar */
 .topbar{width:fit-content;max-width:100%;margin:14px 0 0 auto;
@@ -84,7 +86,7 @@ button.src{background:none;border:0;border-bottom:1px dashed currentColor;paddin
 .tlt tr:hover td{background:rgba(255,255,255,.04)}
 .tlt tr.tlgap td{height:14px;padding:0;border-bottom:1px solid var(--line);background:none}
 .tlfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 18px 14px;font-size:12.5px;color:var(--muted)}
-.content{flex:1;min-height:0;min-width:0;font-size:clamp(11px,calc(var(--u)*19),18px);line-height:1.35}
+.content{flex:1;min-height:0;min-width:0;font-size:clamp(10px,calc(var(--u)*19),18px);line-height:1.35}
 
 /* painted orbs become buttons */
 .btns{position:absolute;left:0;right:0;bottom:calc(var(--u)*80);height:calc(var(--u)*215)}
@@ -131,17 +133,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold);outline:none}
 .split i{display:block;height:100%}
 input[type=range]{width:100%;accent-color:var(--c)}
 /* jezdec rozdělení: vlevo modrá (robot), vpravo oranžová (manuál); kulička má barvu převažující strany, při 50 % napůl */
-input.mix{-webkit-appearance:none;appearance:none;height:30px;background:transparent;margin:10px 0 4px;cursor:pointer}
+input.mix{-webkit-appearance:none;appearance:none;height:min(30px,2.6em);background:transparent;margin:min(10px,.5em) 0 min(4px,.3em);cursor:pointer}
 input.mix::-webkit-slider-runnable-track{height:12px;border-radius:999px;background:linear-gradient(90deg,var(--blue) 0 var(--p),var(--orange) var(--p) 100%);box-shadow:0 0 10px rgba(31,140,255,.35),0 0 10px rgba(255,116,23,.25)}
 input.mix::-moz-range-track{height:12px;border-radius:999px;background:linear-gradient(90deg,var(--blue) 0 var(--p),var(--orange) var(--p) 100%)}
 input.mix::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;margin-top:-8px;border-radius:50%;border:2px solid #fff;background:var(--thumb);box-shadow:0 0 12px var(--glow)}
 input.mix::-moz-range-thumb{width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:var(--thumb);box-shadow:0 0 12px var(--glow)}
 input.mix:focus-visible{outline:none}
-label.mixlab{display:block;line-height:1.5;font-size:13px}
-.prevf label.f{font-size:13px}
-.doact{justify-content:flex-end;font-size:13px}.doact .lbl{line-height:1}.doact .act{width:100%;padding:.62em 1em;font-size:15px}
-.mixvals{position:relative;height:20px;margin-top:10px}
-.mv{position:absolute;top:0;white-space:nowrap;font-family:var(--f-mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+label.mixlab{display:block;line-height:1.5;font-size:min(13px,1em)}
+.prevf label.f{font-size:min(13px,1em)}
+.prevf .grid2{gap:.5em .7em}.prevf .note{margin-top:.35em}
+.doact{justify-content:flex-end;font-size:min(13px,1em)}.doact .lbl{line-height:1}.doact .act{width:100%;padding:.62em 1em;font-size:min(15px,1.15em)}
+.mixvals{position:relative;height:min(20px,1.5em);margin-top:min(10px,.6em)}
+.mv{position:absolute;top:0;white-space:nowrap;font-family:var(--f-mono);font-size:min(13px,1em);font-weight:600;font-variant-numeric:tabular-nums}
 .mvb{color:var(--blue-hi);text-shadow:0 0 8px var(--blue)}.mvo{color:var(--orange-hi);text-shadow:0 0 8px var(--orange)}
 .mixvals+input.mix{margin-top:2px}
 input.mix:focus-visible::-webkit-slider-thumb{outline:2px solid var(--gold);outline-offset:2px}
@@ -459,12 +462,12 @@ function viewPrev(u,side,st){
    '<label class="f mixlab" for="rng-'+side+'">Rozdělení investice</label>'+
    '<div class="mixvals"><span class="mv mvb"></span><span class="mv mvo"></span></div>'+
    '<input type="range" class="mix" id="rng-'+side+'" min="0" max="100" step="5" value="'+rp+'" data-f="robotPct" data-cap="'+cap+'" style="'+mixStyle(rp)+'">'+
-   '<div class="grid2" style="margin-top:14px">'+
+   '<div class="grid2" style="margin-top:min(14px,.9em)">'+
     '<label class="f">Stop loss %<input type="number" step="any" min="0" id="sl-'+side+'" data-f="'+(side==="robot"?"slRobot":"slManual")+'" value="'+esc((side==="robot"?T.slRobot:T.slManual)||"0")+'"></label>'+
     '<label class="f">Take profit %<input type="number" step="any" min="0" id="tp-'+side+'" data-f="'+(side==="robot"?"tpRobot":"tpManual")+'" value="'+esc((side==="robot"?T.tpRobot:T.tpManual)||"0")+'"></label>'+
     '<label class="f">Částka k výběru $<input type="number" step="any" min="0" id="wa-'+side+'" data-f="withdraw" value="'+esc(T.withdraw)+'" placeholder="0,00"></label>'+
     '<div class="f doact"><span class="lbl">&nbsp;</span><button type="button" class="act" data-a="dowd" data-side="'+side+'">Proveď</button></div>'+
-   '</div><div class="row" style="margin-top:14px"><button class="act" data-a="saveprev">Uložit nastavení</button></div>'+
+   '</div><div class="row" style="margin-top:min(14px,.9em)"><button class="act" data-a="saveprev">Uložit nastavení</button></div>'+
    (list.length?'<ul class="wd">'+list.map(function(w){return '<li><span>'+dmy(new Date(w.t))+' · '+(w.side==="robot"?"robot":"manuál")+'</span><span>'+usd(-w.amount)+'</span></li>'}).join("")+'</ul>':'')+
    '<p class="note">Zaznamenaný výběr se odečte od aktuálního stavu příslušného účtu.</p></form>';
 }
