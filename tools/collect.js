@@ -4,6 +4,7 @@
 // Stáhne nejnovější stránky uzavřených obchodů (výchozí 1 stránka = 100 obchodů)
 // a vrátí kompaktní text: první řádek "PAGES <n> COUNT <počet> SUM <kontrolní součet>",
 // pak jeden obchod na řádek: otevření|zavření (yymmddhhmm)|b/s|loty*100|pipy*10
+// U obchodu na jiném symbolu než XAUUSD je na konci navíc šesté pole se symbolem (např. |BTCUSD).
 // Sloupce se hledají podle názvů v hlavičce, takže nezáleží na tom, které sloupce účet zveřejňuje.
 (async (pages = 1) => {
   const conv = s => { const m = s.match(/(\d+)\.(\d+)\.(\d+) (\d+):(\d+)/); return m ? m[3].slice(2) + m[1].padStart(2, '0') + m[2].padStart(2, '0') + m[4].padStart(2, '0') + m[5] : null; };
@@ -16,8 +17,11 @@
     if ([io, ic, is, ia, il, ip].some(i => i < 0)) throw new Error('výpis nemá potřebné sloupce (chybí Lots nebo Pips?): ' + head.join(', '));
     for (const row of [...t.rows].slice(1)) {
       const c = [...row.cells].map(x => x.textContent.trim().replace(/\s+/g, ' '));
-      if (c[is] !== 'XAUUSD' || !/^(Buy|Sell)$/.test(c[ia])) continue;
-      out.push([conv(c[io]), conv(c[ic]), c[ia][0].toLowerCase(), Math.round(parseFloat(c[il]) * 100), Math.round(parseFloat(c[ip]) * 10)].join('|'));
+      const sym = (c[is] || '').replace(/[^A-Za-z0-9._-]/g, '').toUpperCase();
+      if (!sym || !/^(Buy|Sell)$/.test(c[ia])) continue;
+      const rec = [conv(c[io]), conv(c[ic]), c[ia][0].toLowerCase(), Math.round(parseFloat(c[il]) * 100) || 0, Math.round(parseFloat(c[ip]) * 10) || 0];
+      if (sym !== 'XAUUSD') rec.push(sym);
+      out.push(rec.join('|'));
     }
   };
   try {

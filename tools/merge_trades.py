@@ -5,6 +5,8 @@ Použití:  python3 tools/merge_trades.py vystup.txt [cílový.csv]
           (bez cílového souboru se použije data/gold-evolution.csv – robotické obchodování;
            pro manuální obchodování: data/manual.csv)
 Ověří kontrolní součet, sloučí bez duplicit a seřadí podle času zavření.
+Obchod na jiném symbolu než XAUUSD (šesté pole řádku) se uloží se svým symbolem a bez sloupce Profit –
+jeho výsledek v % dopočítá tools/enrich.py z křivky růstu.
 Vypíše počet přidaných obchodů; při chybě skončí s nenulovým kódem a soubor nezmění.
 """
 import sys, csv, os
@@ -48,14 +50,17 @@ def main(path, target=None):
     from collections import Counter
     with open(CSV, encoding='utf-8') as f:
         rows = list(csv.DictReader(f))
-    key = lambda r: (r['Open Date'], r['Close Date'], r['Action'], r['Lots'], r['Pips'])
+    key = lambda r: (r['Open Date'], r['Close Date'], r['Symbol'], r['Action'], r['Lots'], r['Pips'])
     have = Counter(key(r) for r in rows)
     new = []
     for ln in lines[1:]:
-        o, c, s, l, p = ln.split('|')
+        parts = ln.split('|')
+        o, c, s, l, p = parts[:5]
+        sym = parts[5] if len(parts) > 5 and parts[5] else 'XAUUSD'
         lots, pips = int(l) / 100, int(p) / 10
-        new.append({'Open Date': fmt(o), 'Close Date': fmt(c), 'Symbol': 'XAUUSD', 'Action': 'Buy' if s == 'b' else 'Sell',
-                    'Lots': f'{lots:.2f}', 'Pips': f'{pips:.1f}', 'Profit': f'{pips * lots:.2f}'})
+        # u zlata 1 pip × 1 lot = 1 USD; u jiných symbolů zisk v penězích z výpisu neznáme
+        new.append({'Open Date': fmt(o), 'Close Date': fmt(c), 'Symbol': sym, 'Action': 'Buy' if s == 'b' else 'Sell',
+                    'Lots': f'{lots:.2f}', 'Pips': f'{pips:.1f}', 'Profit': f'{pips * lots:.2f}' if sym == 'XAUUSD' else ''})
     # stejné obchody se mohou opakovat (stejný čas, směr, loty i pipy) – přidáme jen chybějící počet kusů
     want = Counter(key(r) for r in new)
     added = 0

@@ -61,10 +61,17 @@ def main(acc='12309673', target=None):
     lines = []
     for x in hist:
         sz = x.get('sizing') or {}
-        if x.get('symbol') != 'XAUUSD' or x.get('action') not in ('Buy', 'Sell') or sz.get('type') != 'lots':
+        sym = ''.join(ch for ch in str(x.get('symbol') or '').upper() if ch.isalnum() or ch in '._-')
+        if not sym or x.get('action') not in ('Buy', 'Sell') or (sym == 'XAUUSD' and sz.get('type') != 'lots'):
             continue
-        lines.append('|'.join([stamp(x['openTime']), stamp(x['closeTime']), x['action'][0].lower(),
-                               str(round(float(sz['value']) * 100)), str(round(float(x['pips']) * 10))]))
+        try:
+            lots = round(float(sz.get('value') or 0) * 100) if sz.get('type') == 'lots' else 0
+            pips = round(float(x.get('pips') or 0) * 10)
+        except (TypeError, ValueError):
+            lots, pips = 0, 0
+        # jiný symbol než XAUUSD nese symbol v šestém poli; jeho % dopočítá enrich.py z křivky růstu
+        lines.append('|'.join([stamp(x['openTime']), stamp(x['closeTime']), x['action'][0].lower(), str(lots), str(pips)]
+                              + ([sym] if sym != 'XAUUSD' else [])))
     tmp = tempfile.mkdtemp()
     if lines:
         body = '\n'.join(lines)
@@ -73,7 +80,7 @@ def main(acc='12309673', target=None):
             f.write(f'PAGES 1 COUNT {len(lines)} SUM {merge_trades.h36(body)}\n{body}')
         merge_trades.main(tf, target)
     else:
-        print('API nevrátilo žádné obchody XAUUSD.')
+        print('API nevrátilo žádné obchody.')
 
     pts = []
     for row in gain:
