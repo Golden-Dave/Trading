@@ -433,7 +433,8 @@ async function onAuth(user){
     var p=await userRef(user.uid).get();
     if(!p.exists){loginErr="Tento účet byl zrušen nebo nemá přístup.";await auth.signOut();return}
     var mine=await loadUserFull(p);DB.users=[mine];
-    if(mine.isAdmin){var all=await fs.collection("users").get();DB.users=await Promise.all(all.docs.map(loadUserFull))}
+    if(mine.isAdmin){var all=await fs.collection("users").get();DB.users=await Promise.all(all.docs.map(loadUserFull));
+      var mm=DB.users.find(function(u){return u.id===user.uid});if(mm)shareAll(mm).catch(fail)}
     session=user.uid;render();autoRefresh();scheduleHourly();
   }catch(e){renderMsg("Chyba načítání",esc(errText(e))+'<br><br><button class="act" onclick="location.reload()">Zkusit znovu</button>')}
 }
@@ -758,7 +759,7 @@ function renderAdmin(){
     '<h4 class="sec">Ruční aktualizace</h4>'+
     '<div class="f"><span class="lrow"><label for="fT_robot">Soubor CSV – Robotické obchodování</label><button type="button" class="act mini" data-x="updf" data-side="robot">Aktualizovat</button></span><input type="text" class="pick" id="fT_robot" data-side="robot" readonly placeholder="Klikněte a vyberte soubor CSV…"><input type="file" id="fF_robot" data-side="robot" accept=".csv,text/csv" hidden></div>'+
     '<div class="f"><span class="lrow"><label for="fT_manual">Soubor CSV – Manuální obchodování</label><button type="button" class="act mini" data-x="updf" data-side="manual">Aktualizovat</button></span><input type="text" class="pick" id="fT_manual" data-side="manual" readonly placeholder="Klikněte a vyberte soubor CSV…"><input type="file" id="fF_manual" data-side="manual" accept=".csv,text/csv" hidden></div>'+
-    '<p class="hint sec">Platí zdroj, u kterého jste naposledy stiskli Aktualizovat. Nyní – robot: '+srcName(S,"robot")+', manuál: '+srcName(S,"manual")+'.</p>'+
+    '<p class="hint sec">Odkazy i ručně nahrané soubory jsou společné pro všechny účty. Platí zdroj, u kterého jste naposledy stiskli Aktualizovat. Nyní – robot: '+srcName(S,"robot")+', manuál: '+srcName(S,"manual")+'.</p>'+
     '<label class="f">Aktuální stav – robot (USD, ručně)<input type="number" step="any" id="eRB" value="'+esc(S.robotBalance)+'" placeholder="nezadáno"></label>'+
     '<label class="f">Aktuální stav – manuál (USD, ručně)<input type="number" step="any" id="eMB" value="'+esc(S.manualBalance)+'" placeholder="nezadáno"></label>'+
    '</div><p class="hint">Koeficient násobí kladný týdenní výsledek obchodování (pondělí–neděle): 1 = beze změny, 0,8 = o 20 % méně (např. týden +10 $ se započte jako +8 $). Ztrátový týden se počítá celý. Heslo si uživatel mění sám tlačítkem Změnit heslo.</p><div class="row" style="margin-top:10px"><button class="act">Uložit nastavení</button></div></form>'+
@@ -809,7 +810,6 @@ async function adminClick(e){
     var lbl=b.textContent;b.disabled=true;b.textContent="Načítám…";
     var res=await refreshFrom(sel,us,uu);
     b.disabled=false;b.textContent=lbl;
-    if(res.ok&&sel.settings[us+"Src"]==="file"){delete sel.settings[us+"Src"];await persistSettings(sel);renderAdmin()}
     if(!res.ok){msg(res.msg);toast(res.msg);var t=document.getElementById("iMsg");if(t)t.scrollIntoView({behavior:"smooth",block:"center"})}
     return;
   }
@@ -819,7 +819,7 @@ async function adminClick(e){
     var ft;try{ft=parseTrades(await file.text())}catch(err){ft=[]}
     if(!ft.length){var em="V souboru "+file.name+" nejsou žádné obchody. Tabulka musí mít sloupce s časem a ziskem nebo pipy.";msg(em);toast(em);return}
     var fb=sel.trades[fsd].length;sel.trades[fsd]=ft;sel.settings[fsd+"Src"]="file";
-    await persistSettings(sel);await persistTrades(sel,fsd);stampUpd();renderAdmin();renderMain();
+    await persistSettings(sel);await persistTrades(sel,fsd);await shareSource(sel,fsd);stampUpd();renderAdmin();renderMain();
     var fm="Ručně aktualizováno ("+nm+"): "+ft.length+" obchodů ze souboru "+file.name+", dříve "+fb+".";msg(fm);toast(fm);return;
   }
 }
@@ -829,12 +829,27 @@ async function fetchTrades(url){
   return parseTrades(await r.text());
 }
 /* Obchody načtené z odkazu se neukládají do databáze – při každém otevření a každou celou hodinu se načtou znovu. */
+/* Zdroje dat jsou společné pro všechny účty: odkazy, ruční nahrání souboru i jeho obchody se přenesou na každý účet.
+   Účty se liší jen začátkem vyhodnocení, kapitálem, koeficienty a převodem. */
+function srcKey(u,side){var S=u.settings,t=u.trades[side]||[];return [S[side+"Url"],S[side+"Src"]||"",S[side+"Src"]==="file"?t.length+"|"+(t.length?t[t.length-1].t:""):""].join("¦")}
+async function shareSource(from,side,only){
+  var jobs=[];
+  DB.users.forEach(function(u){if(u===from||(only&&only!==u))return;if(srcKey(u,side)===srcKey(from,side))return;
+    var S=u.settings,F=from.settings;S[side+"Url"]=F[side+"Url"];
+    if(F[side+"Src"]==="file"){S[side+"Src"]="file";u.trades[side]=from.trades[side].slice();jobs.push(persistTrades(u,side))}
+    else{delete S[side+"Src"];u.trades[side]=from.trades[side].slice()}
+    jobs.push(persistSettings(u))});
+  await Promise.all(jobs);
+}
+async function shareAll(from,only){await shareSource(from,"robot",only);await shareSource(from,"manual",only)}
 async function refreshFrom(sel,side,url){
   var t;
   try{t=await fetchTrades(url)}
   catch(err){return {ok:false,msg:"Odkaz se nepodařilo načíst automaticky. Web odkazu (např. Myfxbook) nepovoluje čtení z jiné stránky. Použijte odkaz na soubor s obchody v repozitáři, nebo nahrajte soubor CSV v části Ruční aktualizace."}}
   if(!t.length)return {ok:false,msg:"Odkaz se načetl, ale nejsou v něm žádné obchody v tabulce s časem a ziskem nebo pipy."};
   var before=sel.trades[side].length;sel.trades[side]=t;
+  if(sel.settings[side+"Src"]==="file"){delete sel.settings[side+"Src"];await persistSettings(sel)}
+  await shareSource(sel,side);
   stampUpd();renderAdmin();renderMain();
   var m="Aktualizováno ("+(side==="robot"?"robot":"manuál")+"): "+t.length+" obchodů, dříve "+before+".";
   msg(m);toast(m);return {ok:true};
@@ -882,13 +897,14 @@ async function adminSubmit(e){
       await sec.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
       var c=await sec.auth().createUserWithEmailAndPassword(emailOf(n),val("nP")),id=c.user.uid;await sec.auth().signOut();
       var df=defaults();await userRef(id).set({username:n,isAdmin:false,settings:df.settings,transfer:df.transfer,createdAt:new Date().toISOString()});
-      DB.users.push({id:id,username:n,isAdmin:false,settings:df.settings,transfer:df.transfer,trades:{robot:[],manual:[]}});
+      var nu={id:id,username:n,isAdmin:false,settings:df.settings,transfer:df.transfer,trades:{robot:[],manual:[]}};DB.users.push(nu);
+      await shareAll(me(),nu);
       adminSel=id;renderAdmin();toast("Účet "+n+" založen.");
     }catch(err){busy(f,false);toast(errText(err))}
     return;
   }
   if(f.id==="fSet"){var S=sel.settings;S.start=val("eStart");S.capital=+val("eCap");S.coefRobot=+val("eCoefR");S.coefManual=+val("eCoefM");S.robotUrl=val("eRU").trim();S.manualUrl=val("eMU").trim();S.robotBalance=val("eRB");S.manualBalance=val("eMB");
-    await persistSettings(sel);renderAdmin();renderMain();toast("Nastavení uloženo.")}
+    await persistSettings(sel);await shareAll(sel);renderAdmin();renderMain();toast("Nastavení uloženo.")}
 }
 
 /* ---------- start ---------- */
