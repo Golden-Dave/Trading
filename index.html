@@ -555,11 +555,11 @@ function viewGraf(u,side,st){
   /* u dnů a týdnů se rok píše jen u posledního (nejnovějšího) sloupce a tam, kde se rok mění */
   if(s.per==="day"||s.per==="week")b.forEach(function(x,i){var nx=b[i+1];x.label=x.start.getDate()+"."+(x.start.getMonth()+1)+".";if(!nx||nx.start.getFullYear()!==x.start.getFullYear())x.yr=String(x.start.getFullYear())});
   var n=b.length,f=n===1?0:n>=2&&n<=4?1:2,word=({day:["obchodní den","obchodní dny","obchodních dnů"],week:["týden","týdny","týdnů"],month:["měsíc","měsíce","měsíců"],year:["rok","roky","let"]})[s.per][f],sd=new Date(st.start);
-  return head+'<div class="chart" data-side="'+side+'">'+chartSVG(side,b,s.unit)+'</div>'+(n>7?'<div class="chnav"><button type="button" data-chnav="-1" aria-label="Starší období" title="Starší období">‹</button><button type="button" data-chnav="1" aria-label="Novější období" title="Novější období">›</button></div>':'');
+  return head+'<div class="chart" data-side="'+side+'">'+chartSVG(side,b,s.unit)+'</div>'+(n>7?'<div class="chnav"><button type="button" data-chnav="-1" aria-label="Starší období" title="Starší období">‹</button><button type="button" data-chnav="1" aria-label="Novější období" title="Novější období">›</button><button type="button" data-chnav="end" aria-label="Na nejnovější období" title="Na nejnovější období">»</button></div>':'');
 }
 /* Graf se kreslí ve dvou krocích: chartSVG připraví osu a posuvnou plochu, paintChart do nich vykreslí sloupce.
    Rozsah osy Y se počítá jen ze sloupců, které jsou právě vidět, a při posunu grafu se přepočítává. */
-var chartData={},CH={H:262,L:70,R:10,T:34,B:44,VW:570};
+var chartKeep={},chartData={},CH={H:262,L:70,R:10,T:34,B:44,VW:570};
 function chartSVG(side,b,unit){
   var n=b.length,slot=n>7?80:(CH.VW-CH.R)/Math.max(n,1),PW=n>7?n*slot+CH.R:CH.VW;
   chartData[side]={b:b,unit:unit,slot:slot,PW:PW,
@@ -575,6 +575,8 @@ function paintChart(el){
   var vis=vals.slice(i0,i1+1),mn=Math.min(0,Math.min.apply(null,vis)),mx=Math.max(0,Math.max.apply(null,vis));if(mn===mx)mx=1;
   var pad=(mx-mn)*0.12;if(mx>0)mx+=pad;if(mn<0)mn-=pad;  /* místo na popisek nad/pod sloupcem */
   var step=niceStep((mx-mn)/5),lo=Math.floor(mn/step)*step,hi=Math.ceil(mx/step)*step;
+  var pf=Math.max(0,x0/slot),pi=Math.min(n-1,Math.floor(pf));
+  chartKeep[el.dataset.side]={per:ui[el.dataset.side].per,left:b[pi]?b[pi].start.getTime():0,frac:pf-pi,atEnd:sc.scrollLeft>=sc.scrollWidth-sc.clientWidth-1};
   var key=i0+"|"+i1+"|"+lo+"|"+hi;if(el._key===key)return;el._key=key;
   var y=function(v){return T+(hi-v)/(hi-lo)*(H-T-B)};
   var axisCol="rgba(234,241,255,.78)",grid="rgba(255,255,255,.08)",dec=step<1?(step<0.1?2:1):0,ax="",g="";
@@ -606,8 +608,12 @@ function initCharts(){
   document.querySelectorAll(".chart").forEach(function(el){var sc=el.querySelector(".chartscroll");if(!sc)return;
     fitChartHeight(el);
     if(sc._init){el._key=null;return paintChart(el)}
-    sc._init=true;sc.scrollLeft=sc.scrollWidth;paintChart(el);
-    var nav=function(){var c=el.parentNode.querySelectorAll("[data-chnav]"),max=sc.scrollWidth-sc.clientWidth;if(c.length){c[0].disabled=sc.scrollLeft<=1;c[1].disabled=sc.scrollLeft>=max-1}};
+    sc._init=true;sc.scrollLeft=sc.scrollWidth;
+    var d0=chartData[el.dataset.side],keep=chartKeep[el.dataset.side];
+    if(keep&&d0&&keep.per===ui[el.dataset.side].per&&!keep.atEnd){var j=d0.b.findIndex(function(x){return x.start.getTime()>=keep.left});
+      if(j>=0)sc.scrollLeft=(j+(d0.b[j].start.getTime()===keep.left?keep.frac:0))*d0.slot/d0.PW*sc.scrollWidth}
+    paintChart(el);
+    var nav=function(){var c=el.parentNode.querySelectorAll("[data-chnav]"),max=sc.scrollWidth-sc.clientWidth;if(c.length){c[0].disabled=sc.scrollLeft<=1;c[1].disabled=c[2].disabled=sc.scrollLeft>=max-1}};
     var q=false;sc.addEventListener("scroll",function(){if(q)return;q=true;requestAnimationFrame(function(){q=false;paintChart(el);nav()})},{passive:true});nav();
     if(sc.scrollWidth>sc.clientWidth+1){
       sc.classList.add("pan");
@@ -724,7 +730,7 @@ function renderList(){
 app.addEventListener("click",function(e){
   var t=e.target.closest("button");if(!t||!session)return;
   var a=t.dataset.a;
-  if(t.dataset.chnav){var cs=t.closest(".content").querySelector(".chartscroll");if(cs)cs.scrollBy({left:(+t.dataset.chnav)*cs.clientWidth*0.86,behavior:"smooth"});return}
+  if(t.dataset.chnav){var cs=t.closest(".content").querySelector(".chartscroll");if(cs){if(t.dataset.chnav==="end")cs.scrollTo({left:cs.scrollWidth,behavior:"smooth"});else cs.scrollBy({left:(+t.dataset.chnav)*cs.clientWidth*0.86,behavior:"smooth"})}return}
   if(t.dataset.tab){ui[t.dataset.side].tab=t.dataset.tab;saveUi();return renderStand(t.dataset.side)}
   if(t.dataset.k){ui[t.dataset.side][t.dataset.k]=t.dataset.v;saveUi();return renderStand(t.dataset.side)}
   if(a==="logout")return logout();
