@@ -96,6 +96,7 @@ button.src{background:none;border:0;border-bottom:1px dashed currentColor;paddin
 .tlt tr:hover td{background:rgba(255,255,255,.04)}
 .tlt tr.tlgap td{height:14px;padding:0;border-bottom:1px solid var(--line);background:none}
 .tlfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 18px 14px;font-size:12.5px;color:var(--muted)}
+.stand{overflow-anchor:none}
 .content{flex:1;min-height:0;min-width:0;font-size:clamp(10px,calc(var(--u)*19),18px);line-height:1.35}
 
 /* painted orbs become buttons */
@@ -482,7 +483,18 @@ function renderMain(){
   var h='';
   if(u!==m)h+='<div class="banner"><span>Prohlížíte účet <b>'+esc(u.username)+'</b></span><button class="chip" data-a="back">Zpět na můj účet</button></div>';
   h+=sceneHTML(stand(u,"robot"),stand(u,"manual"));
-  app.innerHTML=h;placeAllMix();
+  var y=window.scrollY;app.innerHTML=h;placeAllMix();
+  if(y&&window.scrollY!==y)window.scrollTo(0,y);  /* překreslení nesmí posunout stránku (hlavně na telefonu) */
+}
+/* překreslí jen jeden stojánek – stránka zůstane na místě */
+function renderStand(side){
+  var el=app.querySelector(".stand."+side);if(!el)return renderMain();
+  var y=window.scrollY,tmp=document.createElement("div");tmp.innerHTML=stand(viewed(),side);
+  /* na telefonu (stojánky pod sebou) se stojánek při přepnutí záložky nezmenší – jinak by se stránka posunula */
+  var oldH=el.getBoundingClientRect().height,nw=tmp.firstElementChild;el.replaceWith(nw);
+  if(innerWidth<760){var f=nw.querySelector(".frame");if(f&&nw.getBoundingClientRect().height<oldH)f.style.minHeight=Math.ceil(oldH)+"px"}
+  placeAllMix();
+  if(window.scrollY!==y)window.scrollTo(0,y);
 }
 function stand(u,side){
   var st=stats(u,side),s=ui[side],url=side==="robot"?u.settings.robotUrl:u.settings.manualUrl;
@@ -697,8 +709,8 @@ app.addEventListener("click",function(e){
   var t=e.target.closest("button");if(!t||!session)return;
   var a=t.dataset.a;
   if(t.dataset.chnav){var cs=t.closest(".content").querySelector(".chartscroll");if(cs)cs.scrollBy({left:(+t.dataset.chnav)*cs.clientWidth*0.86,behavior:"smooth"});return}
-  if(t.dataset.tab){ui[t.dataset.side].tab=t.dataset.tab;saveUi();return renderMain()}
-  if(t.dataset.k){ui[t.dataset.side][t.dataset.k]=t.dataset.v;saveUi();return renderMain()}
+  if(t.dataset.tab){ui[t.dataset.side].tab=t.dataset.tab;saveUi();return renderStand(t.dataset.side)}
+  if(t.dataset.k){ui[t.dataset.side][t.dataset.k]=t.dataset.v;saveUi();return renderStand(t.dataset.side)}
   if(a==="logout")return logout();
   if(a==="list"){tlState={side:t.dataset.side,n:200};return renderList()}
   if(a==="pw")return renderPw();
