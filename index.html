@@ -291,7 +291,7 @@ function errText(e){
 /* ---------- formatting ---------- */
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function usd(v,sign){return (sign&&v>0?"+":"")+(v<0?"−":"")+"$"+Math.abs(v).toLocaleString("cs-CZ",{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false})}
-function pct(v,sign){if(!isFinite(v))return "—";return (sign&&v>0?"+":"")+(v<0?"−":"")+Math.abs(v).toLocaleString("cs-CZ",{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false})+" %"}
+function pct(v,sign){if(!isFinite(v))return "—";return (sign&&v>0?"+":"")+(v<0?"−":"")+Math.abs(v).toLocaleString("cs-CZ",{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false})+"%"}
 function num(v,d){return (v<0?"−":"")+Math.abs(v).toLocaleString("cs-CZ",{minimumFractionDigits:d,maximumFractionDigits:d,useGrouping:false})}
 function cls(v){return v>0?"pos":v<0?"neg":""}
 function pad(n){return String(n).padStart(2,"0")}
@@ -489,7 +489,7 @@ function winPie(w,l){
   return '<svg class="pie" viewBox="0 0 100 100" role="img" aria-label="'+w+' ziskových a '+l+' ztrátových obchodů"><title>'+w+' ziskových · '+l+' ztrátových</title>'+g+'<circle cx="'+c+'" cy="'+c+'" r="'+R+'" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/></svg>';
 }
 function winTile(st){
-  return '<div class="tile wintile"><div class="wl"><div class="k">Winrate</div><div class="v"><span class="'+(st.wins>st.losses?"pos":st.wins<st.losses?"neg":"")+'">'+(isFinite(st.winrate)?num(st.winrate,1)+" %":"—")+'</span></div></div>'+winPie(st.wins,st.losses)+'</div>';
+  return '<div class="tile wintile"><div class="wl"><div class="k">Winrate</div><div class="v"><span class="'+(st.wins>st.losses?"pos":st.wins<st.losses?"neg":"")+'">'+(isFinite(st.winrate)?num(st.winrate,1)+"%":"—")+'</span></div></div>'+winPie(st.wins,st.losses)+'</div>';
 }
 function tile(k,v,s,wide){return '<div class="tile'+(wide?' wide':'')+'"><div class="k">'+k+'</div><div class="v">'+v+'</div>'+(s?'<div class="s">'+s+'</div>':'')+'</div>'}
 function seg(side,key,opts){return '<div class="seg" role="group">'+opts.map(function(o){return '<button data-side="'+side+'" data-k="'+key+'" data-v="'+o[0]+'" aria-pressed="'+(ui[side][key]===o[0])+'">'+o[1]+'</button>'}).join("")+'</div>'}
