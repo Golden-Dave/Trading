@@ -540,7 +540,7 @@ function chartSVG(side,b,unit){
 }
 function paintChart(el){
   var d=chartData[el.dataset.side],sc=el.querySelector(".chartscroll");if(!d||!sc)return;
-  var b=d.b,unit=d.unit,vals=d.vals,slot=d.slot,PW=d.PW,n=b.length,H=d.H||CH.H,L=CH.L,R=CH.R,T=CH.T+6,B=CH.B+22,bw=Math.min(54,slot*0.58);
+  var b=d.b,unit=d.unit,vals=d.vals,slot=d.slot,PW=d.PW,n=b.length,H=d.H||CH.H,L=CH.L,R=CH.R,T=CH.T+6,B=CH.B+4,bw=Math.min(54,slot*0.58);
   var k=sc.scrollWidth>0?PW/sc.scrollWidth:1,x0=sc.scrollLeft*k,x1=x0+(sc.clientWidth||sc.scrollWidth)*k;
   var i0=Math.max(0,Math.min(n-1,Math.floor((x0+bw/2)/slot))),i1=Math.max(i0,Math.min(n-1,Math.ceil((x1-bw/2)/slot)-1));
   if((i0+.5)*slot+bw/2<=x0+1&&i0<i1)i0++;
