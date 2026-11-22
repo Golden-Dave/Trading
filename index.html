@@ -106,7 +106,7 @@ button.src{background:none;border:0;border-bottom:1px dashed currentColor;paddin
 .tile .k .nc{text-transform:none}
 .wintile{display:flex;align-items:center;justify-content:space-between;gap:.6em}
 .wintile .wl{min-width:0}
-.wintile .pie{flex:0 0 auto;height:3.6em;width:3.6em;filter:drop-shadow(0 0 .35em rgba(47,226,140,.35))}
+.wintile .pie{flex:0 0 auto;height:4.3em;width:4.3em;margin:-.35em 0;filter:drop-shadow(0 0 .35em rgba(47,226,140,.35))}
 .tile .k{font-size:.72em;text-transform:uppercase;letter-spacing:.08em;color:var(--label);font-weight:700}
 .tile .v{font-family:var(--f-mono);font-weight:600;font-size:1.5em;margin-top:.15em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;text-shadow:0 0 .5em rgba(255,255,255,.25)}
 .tile .s{font-size:.85em;color:var(--sub);margin-top:.1em}
@@ -474,7 +474,7 @@ function winPie(w,l){
   var fw=w/n,g="";
   g+=slice(0,fw,"#2fe28c")+slice(fw,1,"#ff4d61");
   var lab=function(f0,f1,txt){if(f1-f0<0.07)return "";var m=f1-f0>=0.9999?[c,c]:pt((f0+f1)/2,R*0.56);
-    return '<text x="'+m[0].toFixed(1)+'" y="'+m[1].toFixed(1)+'" text-anchor="middle" dominant-baseline="central" font-family="IBM Plex Mono,monospace" font-weight="700" font-size="'+(txt.length>3?15:18)+'" fill="#04130b" stroke="rgba(255,255,255,.35)" stroke-width=".6" paint-order="stroke">'+txt+'</text>'};
+    return '<text x="'+m[0].toFixed(1)+'" y="'+m[1].toFixed(1)+'" text-anchor="middle" dominant-baseline="central" font-family="IBM Plex Mono,monospace" font-weight="700" font-size="'+(txt.length>3?15:18)+'" fill="#fff" stroke="rgba(0,0,0,.55)" stroke-width="2.2" paint-order="stroke">'+txt+'</text>'};
   g+=lab(0,fw,String(w))+lab(fw,1,String(l));
   return '<svg class="pie" viewBox="0 0 100 100" role="img" aria-label="'+w+' ziskových a '+l+' ztrátových obchodů"><title>'+w+' ziskových · '+l+' ztrátových</title>'+g+'<circle cx="'+c+'" cy="'+c+'" r="'+R+'" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/></svg>';
 }
