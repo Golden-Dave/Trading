@@ -539,15 +539,19 @@ function viewObch(u,side,st){
   var head='<div class="ctrls">'+seg(side,"tper",[["day","Denní"],["week","Týdenní"],["month","Měsíční"],["year","Roční"]])+'</div>';
   if(!st.trades.length)return head+noData();
   var b=buckets(st,per),pcts=b.map(function(x){return x.pct}).filter(isFinite);
-  var days=Math.max(1,Math.ceil((Date.now()-st.start)/864e5)),tradingDays=buckets(st,"day").length;
+  /* počet kalendářních období od začátku vyhodnocení do dneška (včetně rozpracovaného) */
+  var calP=0,ps=periodStart(new Date(st.start),per),now=new Date();
+  while(ps<=now&&calP<5000){calP++;var nx=new Date(ps);if(per==="day")nx.setDate(nx.getDate()+1);else if(per==="week")nx.setDate(nx.getDate()+7);else if(per==="month")nx.setMonth(nx.getMonth()+1);else nx.setFullYear(nx.getFullYear()+1);ps=nx}
+  calP=Math.max(1,calP);
   var curKey=periodStart(new Date(),per).getTime(),cur=b.find(function(x){return x.start.getTime()===curKey});
   var best=pcts.length?Math.max.apply(null,pcts):NaN,worst=pcts.length?Math.min.apply(null,pcts):NaN;
   var bestB=b.find(function(x){return x.pct===best}),worstB=b.find(function(x){return x.pct===worst});
   var sumP=pcts.reduce(function(a,v){return a+v},0);
-  var word={day:"den",week:"týden",month:"měsíc",year:"rok"}[per],cw={day:"dnes",week:"tento týden",month:"tento měsíc",year:"letos"}[per];
+  var word={day:"den",week:"týden",month:"měsíc",year:"rok"}[per],cw={day:"dnes",week:"tento týden",month:"tento měsíc",year:"letos"}[per],
+      tw={day:"obchodní den",week:"týden s obchody",month:"měsíc s obchody",year:"rok s obchody"}[per];
   return head+'<div class="tiles">'+
-   tile("Obchodů celkem",String(st.trades.length),"od "+dmy(new Date(st.start)))+
-   tile("Průměrně obchodů za den",num(st.trades.length/days,2),num(st.trades.length/tradingDays,2)+" na obchodní den")+
+   tile("Obchodů – "+cw,String(cur?cur.n:0),"celkem "+st.trades.length+" od "+dmy(new Date(st.start)))+
+   tile("Průměrně obchodů za "+word,num(st.trades.length/calP,2),num(st.trades.length/Math.max(1,b.length),2)+" na "+tw)+
    tile("Návratnost – "+cw,'<span class="'+cls(cur?cur.pct:0)+'">'+pct(cur?cur.pct:0,true)+'</span>',"průměr za "+word+": "+pct(pcts.length?sumP/pcts.length:NaN,true))+
    tile("Celková návratnost",'<span class="'+cls(st.pnl)+'">'+pct(st.base?st.pnl/st.base*100:NaN,true)+'</span>',b.length+" období ("+word+")")+
    tile("Max. návratnost za "+word,'<span class="pos">'+pct(best>0?best:NaN,true)+'</span>',bestB&&best>0?bestB.label+" · "+usd(bestB.profit,true):"bez ziskového období")+
