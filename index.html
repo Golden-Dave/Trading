@@ -69,6 +69,9 @@ button.titleimg{border:0;padding:0;cursor:pointer}
 .manual .shead{flex-direction:row-reverse}
 .robot .shead{right:calc(var(--u)*58)}
 .manual .shead{left:calc(var(--u)*62)}
+/* nadpis stojánku je vycentrovaný na šířku rámu; odkaz Zdroj zůstává u okraje */
+.shead{left:calc(var(--u)*62)!important;right:calc(var(--u)*62)!important;justify-content:flex-end}
+.shead h2{position:absolute;left:0;right:0;text-align:center;padding:0 4.2em;pointer-events:none}
 .shead h2{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(14px,calc(var(--u)*30),30px);color:#fff;text-shadow:0 0 10px var(--c),0 0 2px var(--hi);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .src{font-size:clamp(11px,calc(var(--u)*17),15px);color:var(--hi);text-decoration:none;border-bottom:1px dashed currentColor;white-space:nowrap}
 .src:hover{color:#fff}
