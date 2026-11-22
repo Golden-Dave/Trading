@@ -640,12 +640,12 @@ function viewObch(u,side,st){
 }
 function viewPrev(u,side,st){
   var T=u.transfer,cap=+u.settings.capital||0,rp=+T.robotPct,mp=100-rp,list=(T.withdrawals||[]).slice(-5).reverse();
-  return '<form class="prevf" data-side="'+side+'">'+
+  return '<form class="prevf" data-side="'+side+'" novalidate>'+
    '<label class="f mixlab" for="rng-'+side+'">Rozdělení investice</label>'+
    '<div class="mixvals"><span class="mv mvb"></span><span class="mv mvo"></span></div>'+
    '<input type="range" class="mix" id="rng-'+side+'" min="0" max="100" step="5" value="'+rp+'" data-f="robotPct" data-cap="'+cap+'" style="'+mixStyle(rp)+'">'+
    '<div class="grid2" style="margin-top:min(14px,.9em)">'+
-    '<label class="f">Stop loss %<input type="number" step="any" min="0" id="sl-'+side+'" data-f="'+(side==="robot"?"slRobot":"slManual")+'" value="'+esc((side==="robot"?T.slRobot:T.slManual)||"0")+'"></label>'+
+    '<label class="f">Stop loss %<input type="number" step="any" min="0" max="100" id="sl-'+side+'" data-f="'+(side==="robot"?"slRobot":"slManual")+'" value="'+esc((side==="robot"?T.slRobot:T.slManual)||"0")+'"></label>'+
     '<div class="f doact"><span class="lbl">&nbsp;</span><button class="act" data-a="saveprev">Uložit nastavení</button></div>'+
     '<label class="f">Částka k výběru $<input type="number" step="any" min="0" id="wa-'+side+'" data-f="withdraw" value="'+esc(T.withdraw)+'" placeholder="0,00"></label>'+
     '<div class="f doact"><span class="lbl">&nbsp;</span><button type="button" class="act" data-a="dowd" data-side="'+side+'">Proveď</button></div>'+
@@ -731,6 +731,8 @@ app.addEventListener("click",function(e){
     persistTransfer(u);renderMain();toast("Výběr "+usd(amt)+" zaznamenán.")}
 });
 app.addEventListener("submit",function(e){var f=e.target.closest(".prevf");if(!f)return;e.preventDefault();
+  var sle=f.querySelector('[data-f^="sl"]');if(sle){var slv=sle.value.trim().replace(",",".");
+    if(slv!==""&&!(isFinite(+slv)&&+slv>=0&&+slv<=100)){toast("Stop loss musí být v rozsahu 0–100 %.");sle.focus();return}}
   var u=viewed(),T=u.transfer,before=[T.robotPct,T.slRobot,T.slManual].join("|");
   f.querySelectorAll('[data-f]').forEach(function(el){var k=el.dataset.f;if(k==="withdraw")return;T[k]=k==="robotPct"?+el.value:el.value});
   /* změnu, kterou uložil jiný uživatel než správce, uvidí správce ve Správě účtů */
