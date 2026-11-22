@@ -642,12 +642,12 @@ function viewPrev(u,side,st){
    '<input type="range" class="mix" id="rng-'+side+'" min="0" max="100" step="5" value="'+rp+'" data-f="robotPct" data-cap="'+cap+'" style="'+mixStyle(rp)+'">'+
    '<div class="grid2" style="margin-top:min(14px,.9em)">'+
     '<label class="f">Stop loss %<input type="number" step="any" min="0" id="sl-'+side+'" data-f="'+(side==="robot"?"slRobot":"slManual")+'" value="'+esc((side==="robot"?T.slRobot:T.slManual)||"0")+'"></label>'+
-    '<label class="f">Take profit %<input type="number" step="any" min="0" id="tp-'+side+'" data-f="'+(side==="robot"?"tpRobot":"tpManual")+'" value="'+esc((side==="robot"?T.tpRobot:T.tpManual)||"0")+'"></label>'+
+    '<div class="f doact"><span class="lbl">&nbsp;</span><button class="act" data-a="saveprev">Uložit nastavení</button></div>'+
     '<label class="f">Částka k výběru $<input type="number" step="any" min="0" id="wa-'+side+'" data-f="withdraw" value="'+esc(T.withdraw)+'" placeholder="0,00"></label>'+
     '<div class="f doact"><span class="lbl">&nbsp;</span><button type="button" class="act" data-a="dowd" data-side="'+side+'">Proveď</button></div>'+
-   '</div><div class="row" style="margin-top:min(14px,.9em)"><button class="act" data-a="saveprev">Uložit nastavení</button></div>'+
+   '</div>'+
    (list.length?'<ul class="wd">'+list.map(function(w){return '<li><span>'+dmy(new Date(w.t))+' · '+(w.side==="robot"?"robot":"manuál")+'</span><span>'+usd(-w.amount)+'</span></li>'}).join("")+'</ul>':'')+
-   '<p class="note">Zaznamenaný výběr se odečte od aktuálního stavu příslušného účtu.</p></form>';
+   '</form>';
 }
 function mixStyle(rp){rp=+rp;
   var th=rp>50?"var(--blue)":rp<50?"var(--orange)":"linear-gradient(90deg,var(--blue) 50%,var(--orange) 50%)";
