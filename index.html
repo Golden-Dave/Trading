@@ -434,7 +434,7 @@ function viewInv(u,side,st){
   var mb=st.manualBal,sd=new Date(st.start);
   return '<div class="tiles">'+
    tile("Původní investice",usd(st.base),st.share+" % z kapitálu "+usd(+u.settings.capital||0))+
-   tile("Aktuální stav",'<span class="'+cls(st.current-st.base)+'">'+usd(st.current)+'</span>',"koeficient "+num(st.coef,2)+(st.wd?" · výběry "+usd(st.wd):""))+
+   tile("Aktuální stav",'<span class="'+cls(st.current-st.base)+'">'+usd(st.current)+'</span>',[me().isAdmin?"koeficient "+num(st.coef,2):"",st.wd?"výběry "+usd(st.wd):""].filter(Boolean).join(" · "))+
    tile("Aktuální PnL",'<span class="'+cls(st.pnl)+'">'+usd(st.pnl,true)+'</span>',pct(st.base?st.pnl/st.base*100:NaN,true))+
    tile("Winrate",isFinite(st.winrate)?num(st.winrate,1)+" %":"—",st.wins+" ziskových · "+st.losses+" ztrátových")+
    (mb!=null?tile("Skutečný zůstatek (zadaný ručně)",usd(mb),"rozdíl proti výpočtu "+usd(mb-st.current,true),true):"")+
