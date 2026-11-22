@@ -493,7 +493,7 @@ function viewInv(u,side,st){
    tile('Aktuální <span class="nc">PnL</span>','<span class="vrow"><span class="'+cls(st.pnl)+'">'+usd(st.pnl,true)+'</span><span class="'+cls(st.pnl)+'">'+pct(st.base?st.pnl/st.base*100:NaN,true)+'</span></span>')+
    winTile(st)+
    (mb!=null?tile("Skutečný zůstatek (zadaný ručně)",usd(mb),"rozdíl proti výpočtu "+usd(mb-st.current,true),true):"")+
-   '</div><p class="note">Vyhodnocuje se od '+dmy(sd)+' '+pad(sd.getHours())+':'+pad(sd.getMinutes())+'. '+(!me().isAdmin?'':(st.pctMode?'Výsledky jsou procentní výnos zdrojového účtu přepočtený na vaši investici. ':'')+(st.coef===1?'Koeficient 1 – bez úprav.':'Kladný denní výsledek se násobí koeficientem '+num(st.coef,2)+' (o '+num((1-st.coef)*100,0)+' % méně), ztrátové dny se počítají celé.'))+'</p>';
+   '</div>';
 }
 function viewGraf(u,side,st){
   var s=ui[side];
