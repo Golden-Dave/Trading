@@ -550,7 +550,7 @@ function viewGraf(u,side,st){
   var s=ui[side];
   var head='<div class="ctrls">'+seg(side,"unit",[["pct","%"],["usd","$"],["lot","Lot"],["pips","Pips"]])+seg(side,"per",[["day","Dny"],["week","Týdny"],["month","Měsíce"],["year","Roky"]])+'</div>';
   var all=bucketsAll(u,side,st,s.per),hid=0;
-  var b=all.filter(function(x){var ok=s.unit==="usd"?isFinite(x.profit):s.unit==="pct"?isFinite(x.pct):x.nx>0;if(!ok)hid++;return ok});
+  var b=all.filter(function(x){var ok=s.unit==="usd"?!x.pre&&isFinite(x.profit):s.unit==="pct"?isFinite(x.pct):x.nx>0;if(!ok)hid++;return ok});
   if(!b.length)return head+noData();
   /* u dnů a týdnů se rok píše jen u posledního (nejnovějšího) sloupce a tam, kde se rok mění */
   if(s.per==="day"||s.per==="week")b.forEach(function(x,i){var nx=b[i+1];x.label=x.start.getDate()+"."+(x.start.getMonth()+1)+".";if(!nx||nx.start.getFullYear()!==x.start.getFullYear())x.yr=String(x.start.getFullYear())});
