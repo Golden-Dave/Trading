@@ -122,8 +122,9 @@ button.src{background:none;border:0;border-bottom:1px dashed currentColor;paddin
 .chartscroll::-webkit-scrollbar{display:none}
 .chartscroll.pan{cursor:grab}.chartscroll.drag{cursor:grabbing;user-select:none}
 .chnav{float:right;display:inline-flex;gap:.4em;margin-left:.8em}
-.chnav button{border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--fg);border-radius:.5em;padding:0 .7em;font-size:1.15em;line-height:1.3}
-.chnav button:hover{border-color:var(--c);color:var(--hi)}
+.chnav button{border:1.5px solid var(--hi);background:color-mix(in srgb,var(--c) 35%,rgba(0,0,0,.5));color:#fff;border-radius:.55em;min-width:2.3em;padding:.05em .75em;font-size:1.5em;font-weight:800;line-height:1.15;cursor:pointer;box-shadow:0 0 .7em color-mix(in srgb,var(--c) 70%,transparent)}
+.chnav button:hover{background:color-mix(in srgb,var(--c) 60%,rgba(0,0,0,.4));box-shadow:0 0 1em var(--c)}
+.chnav button:disabled{opacity:.35;box-shadow:none;cursor:default}
 .empty{border:1px dashed color-mix(in srgb,var(--hi) 45%,transparent);border-radius:1em;padding:1.4em 1em;text-align:center;color:var(--sub);line-height:1.6;background:rgba(0,0,0,.4)}
 
 /* forms */
@@ -520,7 +521,8 @@ function initCharts(){
   document.querySelectorAll(".chart").forEach(function(el){var sc=el.querySelector(".chartscroll");if(!sc)return;
     if(sc._init){el._key=null;return paintChart(el)}
     sc._init=true;sc.scrollLeft=sc.scrollWidth;paintChart(el);
-    var q=false;sc.addEventListener("scroll",function(){if(q)return;q=true;requestAnimationFrame(function(){q=false;paintChart(el)})},{passive:true});
+    var nav=function(){var c=el.parentNode.querySelectorAll("[data-chnav]"),max=sc.scrollWidth-sc.clientWidth;if(c.length){c[0].disabled=sc.scrollLeft<=1;c[1].disabled=sc.scrollLeft>=max-1}};
+    var q=false;sc.addEventListener("scroll",function(){if(q)return;q=true;requestAnimationFrame(function(){q=false;paintChart(el);nav()})},{passive:true});nav();
     if(sc.scrollWidth>sc.clientWidth+1){
       sc.classList.add("pan");
       /* kolečko myši posouvá graf do stran */
