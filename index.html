@@ -241,9 +241,11 @@ var DEMO=/[?&]demo\b/.test(location.search);
 function uid(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36)}
 function emailOf(n){return n.toLowerCase()+"@"+EMAIL_DOMAIN}
 function validName(n){return /^[a-z0-9._-]{3,30}$/i.test(n)}
+/* výchozí zdroje dat pro každý účet – automaticky aktualizované soubory v repozitáři */
+var DEF_URL={robot:"https://golden-dave.github.io/Trading/data/gold-evolution.csv",manual:"https://golden-dave.github.io/Trading/data/manual.csv"};
 function defaults(){
   var d=new Date();d.setDate(1);d.setHours(0,0,0,0);
-  return {settings:{start:toLocalInput(d),capital:1000,coef:0.8,coefRobot:0.8,coefManual:1,robotUrl:"",manualUrl:"",robotBalance:"",manualBalance:""},
+  return {settings:{start:toLocalInput(d),capital:1000,coef:0.8,coefRobot:0.8,coefManual:1,robotUrl:DEF_URL.robot,manualUrl:DEF_URL.manual,robotBalance:"",manualBalance:""},
     transfer:{robotPct:50,slRobot:"",slManual:"",tpRobot:"",tpManual:"",slUnit:"%",withdraw:"",wdSide:"robot",withdrawals:[]}};
 }
 function me(){return DB.users.find(function(u){return u.id===session})}
@@ -255,9 +257,11 @@ function fail(e){console.error(e);toast("Uložení se nezdařilo: "+errText(e))}
 function persistSettings(u){if(DEMO)return Promise.resolve();return userRef(u.id).update({settings:u.settings}).catch(fail)}
 function persistTransfer(u){if(DEMO)return Promise.resolve();return userRef(u.id).update({transfer:u.transfer}).catch(fail)}
 function persistTrades(u,side){if(DEMO)return Promise.resolve();return userRef(u.id).collection("trades").doc(side).set({items:u.trades[side]}).catch(fail)}
+/* účet bez odkazu (založený dřív s prázdnými odkazy) bere data z výchozích odkazů */
+function withUrls(S){if(!S.robotUrl)S.robotUrl=DEF_URL.robot;if(!S.manualUrl)S.manualUrl=DEF_URL.manual;return S}
 async function loadUserFull(doc){
   var d=doc.data(),df=defaults();
-  var u={id:doc.id,username:d.username,isAdmin:!!d.isAdmin,settings:Object.assign(df.settings,d.settings||{}),transfer:Object.assign(df.transfer,d.transfer||{}),trades:{robot:[],manual:[]}};
+  var u={id:doc.id,username:d.username,isAdmin:!!d.isAdmin,settings:withUrls(Object.assign(df.settings,d.settings||{})),transfer:Object.assign(df.transfer,d.transfer||{}),trades:{robot:[],manual:[]}};
   var ts=await userRef(doc.id).collection("trades").get();
   ts.forEach(function(t){if(u.trades[t.id])u.trades[t.id]=t.data().items||[]});
   return u;
