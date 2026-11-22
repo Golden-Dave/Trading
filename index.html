@@ -343,15 +343,16 @@ function bucketsAll(u,side,st,per){
   var post=buckets(st,per),map={},out=[];post.forEach(function(b){b.pre=false;map[b.start.getTime()]=b;out.push(b)});
   var pre=(u.trades[side]||[]).filter(function(t){return new Date(t.t).getTime()<st.start}).sort(function(a,b){return new Date(a.t)-new Date(b.t)});
   var hasPct=pre.length>0&&pre.every(function(t){return typeof t.pct==="number"&&isFinite(t.pct)}),pm={},po=[];
-  /* % před začátkem: stejný výpočet jako po začátku, jen s pomyslným vkladem 1 od prvního obchodu v datech */
-  var sim=hasPct?simulate(pre,1,st.coef,true):pre,bal=1;
+  /* Období před začátkem: stejný výpočet jako po začátku (týdenní koeficient), jako by se investice uživatele
+     vložila už při prvním obchodu v datech. Dává % i částky v $; po začátku vyhodnocení se počítá znovu od investice. */
+  var B=st.base>0?st.base:1,sim=pre.length?simulate(pre,B,st.coef,hasPct):[],bal=B;
   sim.forEach(function(t){var s=periodStart(new Date(t.t),per),k=s.getTime();
     if(!pm[k]){pm[k]={start:s,pips:0,lots:0,n:0,nx:0,adj:0,bal:bal};po.push(k)}
     var b=pm[k];b.pips+=(+t.pips||0);b.lots+=(+t.lots||0);b.n++;if(!t.sym)b.nx++;
-    if(hasPct){b.adj+=t.adj;bal+=t.adj}});
-  po.forEach(function(k){var b=pm[k],g=hasPct&&b.bal>0?b.adj/b.bal*100:NaN,m=map[k];
-    if(m){m.pips+=b.pips;m.lots+=b.lots;m.n+=b.n;m.nx+=b.nx;m.pct=isFinite(g)&&isFinite(m.pct)?((1+g/100)*(1+m.pct/100)-1)*100:m.pct}
-    else out.push({start:b.start,profit:NaN,pips:b.pips,lots:b.lots,n:b.n,nx:b.nx,pct:g,pre:true,label:bucketLabel(b.start,per)})});
+    b.adj+=t.adj;bal+=t.adj});
+  po.forEach(function(k){var b=pm[k],g=hasPct&&b.bal>0?b.adj/b.bal*100:NaN,usdv=st.base>0?b.adj:0,m=map[k];
+    if(m){m.pips+=b.pips;m.lots+=b.lots;m.n+=b.n;m.nx+=b.nx;m.profit+=usdv;m.pct=isFinite(g)&&isFinite(m.pct)?((1+g/100)*(1+m.pct/100)-1)*100:m.pct}
+    else out.push({start:b.start,profit:usdv,pips:b.pips,lots:b.lots,n:b.n,nx:b.nx,pct:g,pre:true,label:bucketLabel(b.start,per)})});
   return out.sort(function(a,b){return a.start-b.start});
 }
 
@@ -474,11 +475,11 @@ function viewGraf(u,side,st){
   var s=ui[side];
   var head='<div class="ctrls">'+seg(side,"unit",[["pct","%"],["usd","$"],["lot","Lot"],["pips","Pips"]])+seg(side,"per",[["day","Dny"],["week","Týdny"],["month","Měsíce"],["year","Roky"]])+'</div>';
   var all=bucketsAll(u,side,st,s.per),hid=0;
-  var b=all.filter(function(x){var ok=s.unit==="usd"?!x.pre:s.unit==="pct"?isFinite(x.pct):x.nx>0;if(!ok)hid++;return ok});
+  var b=all.filter(function(x){var ok=s.unit==="usd"?isFinite(x.profit):s.unit==="pct"?isFinite(x.pct):x.nx>0;if(!ok)hid++;return ok});
   if(!b.length)return head+noData();
   var n=b.length,f=n===1?0:n>=2&&n<=4?1:2,word=({day:["obchodní den","obchodní dny","obchodních dnů"],week:["týden","týdny","týdnů"],month:["měsíc","měsíce","měsíců"],year:["rok","roky","let"]})[s.per][f],sd=new Date(st.start);
   return head+'<div class="chart" data-side="'+side+'">'+chartSVG(side,b,s.unit)+'</div><p class="note">'+n+' '+word+' s obchody'+(n>7?', starší posunem grafu doleva':'')+'. '+(n>7?'<span class="chnav"><button type="button" data-chnav="-1" aria-label="Starší období" title="Starší období">‹</button><button type="button" data-chnav="1" aria-label="Novější období" title="Novější období">›</button></span>':'')+
-    (hid&&s.unit==="usd"?'Částky v $ jsou jen od '+dmy(sd)+'.':hid?'Starší období nemají údaj o %.':n>7?'':'Hodnota nad sloupcem je ve zvolené jednotce.')+'</p>';
+    (hid&&s.unit==="usd"?'Některá období nemají údaj v $.':hid?'Starší období nemají údaj o %.':n>7?'':'Hodnota nad sloupcem je ve zvolené jednotce.')+'</p>';
 }
 /* Graf se kreslí ve dvou krocích: chartSVG připraví osu a posuvnou plochu, paintChart do nich vykreslí sloupce.
    Rozsah osy Y se počítá jen ze sloupců, které jsou právě vidět, a při posunu grafu se přepočítává. */
