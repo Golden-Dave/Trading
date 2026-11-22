@@ -488,7 +488,7 @@ function winPie(w,l){
   var lab=function(f0,f1,txt){if(f1-f0<0.07)return "";var m=f1-f0>=0.9999?[c,c]:pt((f0+f1)/2,R*0.56);
     return '<text x="'+m[0].toFixed(1)+'" y="'+m[1].toFixed(1)+'" text-anchor="middle" dominant-baseline="central" font-family="IBM Plex Mono,monospace" font-weight="700" font-size="'+(txt.length>3?15:18)+'" fill="#fff" stroke="rgba(0,0,0,.55)" stroke-width="2.2" paint-order="stroke">'+txt+'</text>'};
   g+=lab(0,fw,String(w))+lab(fw,1,String(l));
-  return '<svg class="pie" viewBox="0 0 100 100" role="img" aria-label="'+w+' ziskových a '+l+' ztrátových obchodů"><title>'+w+' ziskových · '+l+' ztrátových</title>'+g+'<circle cx="'+c+'" cy="'+c+'" r="'+R+'" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/></svg>';
+  return '<svg class="pie" viewBox="0 0 100 100" role="img" aria-label="'+w+' ziskových a '+l+' ztrátových obchodů"><title>'+w+' ziskových · '+l+' ztrátových obchodů</title>'+g+'<circle cx="'+c+'" cy="'+c+'" r="'+R+'" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/></svg>';
 }
 function winTile(st){
   return '<div class="tile wintile"><div class="wl"><div class="k">Winrate</div><div class="v"><span class="'+(st.wins>st.losses?"pos":st.wins<st.losses?"neg":"")+'">'+(isFinite(st.winrate)?"%"+num(st.winrate,1):"—")+'</span></div></div>'+winPie(st.wins,st.losses)+'</div>';
@@ -499,7 +499,7 @@ function seg(side,key,opts){return '<div class="seg" role="group">'+opts.map(fun
 function viewInv(u,side,st){
   var mb=st.manualBal,sd=new Date(st.start);
   return '<div class="tiles big">'+
-   tile("Původní investice",'<span class="vrow"><span>'+usd(st.base)+'</span><span>'+dmyShort(new Date(st.start))+'</span></span>')+
+   tile("Původní investice",'<span class="vrow" title="Vyhodnocuje se od uvedeného data"><span>'+usd(st.base)+'</span><span>'+dmyShort(new Date(st.start))+'</span></span>')+
    tile("Stav účtu",'<span class="'+cls(st.current-st.base)+'">'+usd(st.current)+'</span>',[me().isAdmin?"koeficient "+num(st.coef,2):"",st.wd?"výběry "+usd(st.wd):""].filter(Boolean).join(" · "))+
    tile('Aktuální <span class="nc">PnL</span>','<span class="vrow"><span class="'+cls(st.pnl)+'">'+usd(st.pnl)+'</span><span class="'+cls(st.pnl)+'">'+pctPre(st.base?st.pnl/st.base*100:NaN)+'</span></span>')+
    winTile(st)+
