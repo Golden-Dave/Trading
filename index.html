@@ -163,6 +163,10 @@ input.mix:focus-visible::-webkit-slider-thumb{outline:2px solid var(--gold);outl
 
 /* auth inside the blue stand */
 .authf{display:grid;gap:.8em;max-width:26em}
+.authscene{min-height:calc(100vh - 28px);min-height:calc(100dvh - 28px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(12px,4vh,40px)}
+.scene.authscene .titleimg{position:relative;top:auto;left:auto;width:min(92vw,560px);margin:0 auto;z-index:auto;-webkit-mask-image:linear-gradient(to bottom,#000 62%,transparent 92%);mask-image:linear-gradient(to bottom,#000 62%,transparent 92%)}
+.authcard{--c:var(--blue);--hi:var(--blue-hi);box-sizing:border-box;width:min(440px,92vw);padding:28px 30px 30px;border:2px solid var(--hi);border-radius:22px;background:#04060f;box-shadow:0 0 28px -4px var(--c),inset 0 0 22px -10px var(--c);font-size:16px}
+.authcard .authf{max-width:none}
 .authf h3,.welcome h3{margin:0;font-family:var(--f-display);font-size:1.6em;line-height:1.1;color:#fff;text-shadow:0 0 .5em var(--c)}
 .authf p,.welcome p{margin:0;color:var(--muted);line-height:1.5}
 .welcome{display:grid;gap:.7em;max-width:26em}
@@ -360,7 +364,8 @@ function render(){
 }
 function sceneHTML(a,b){return '<div class="scene"><button type="button" class="titleimg" data-a="menu" aria-label="XAU/USD – účet a nastavení" title="Účet a nastavení"></button><div class="stands">'+a+b+'</div></div>'}
 function shell(side,head,body,btns){return '<section class="stand '+side+'" aria-label="'+(side==="robot"?"Robotické":"Manuální")+' obchodování"><div class="frame"><div class="shead">'+head+'</div><div class="content">'+body+'</div>'+(btns||'')+'</div></section>'}
-function authScene(inner){return sceneHTML(shell("robot","<h2>Robotické obchodování</h2>",inner),shell("manual","<h2>Manuální obchodování</h2>",'<div class="welcome"><h3>Výsledky obchodování XAU/USD</h3><p>Po přihlášení uvidíte investici, graf, statistiky obchodů a nastavení převodu pro robotický i manuální účet.</p></div>'))}
+/* úvodní obrazovka (přihlášení, založení správce, hlášky): jen nadpis XAU/USD a jedno okno */
+function authScene(inner){return '<div class="scene authscene"><div class="titleimg" role="img" aria-label="XAU/USD"></div><section class="authcard" aria-label="Přihlášení">'+inner+'</section></div>'}
 function renderMsg(title,text){app.innerHTML=authScene('<div class="authf"><h3>'+esc(title)+'</h3><p>'+text+'</p></div>')}
 function renderSetup(){
   app.innerHTML=authScene('<form class="authf" id="fSetup"><h3>Založení správce</h3><p>Aplikace zatím nemá správce. Vytvořte administrátorský účet, kterým budete zakládat a mazat účty dalších uživatelů.</p>'+
@@ -408,7 +413,9 @@ async function onAuth(user){
     session=user.uid;render();autoRefresh();scheduleHourly();
   }catch(e){renderMsg("Chyba načítání",esc(errText(e))+'<br><br><button class="act" onclick="location.reload()">Zkusit znovu</button>')}
 }
-function logout(){if(DEMO){location.href=location.pathname;return}auth.signOut()}
+function logout(){if(DEMO){location.href=location.pathname;return}
+  clearTimeout(hourTimer);adminOpen=false;if(ov){ov.remove();ov=null}
+  session=null;DB.users=[];viewId=null;adminSel=null;renderLogin();auth.signOut()}
 
 /* ---------- main view ---------- */
 function renderMain(){
@@ -754,7 +761,7 @@ async function adminClick(e){
   var sel=DB.users.find(function(u){return u.id===adminSel});
   if(x==="close"){if(adminOpen&&sel)viewId=sel.id===me().id?null:sel.id;return closeOv()}  /* po zavření Správy účtů se zobrazí vybraný účet */
   if(x==="pw"){adminOpen=false;return renderPw()}
-  if(x==="logout"){closeOv();return logout()}
+  if(x==="logout")return logout();
   if(x==="sel"){adminSel=b.dataset.id;return renderAdmin()}
   if(x==="view"){viewId=sel.id===me().id?null:sel.id;return closeOv()}
   if(x==="del")return arm(b,"del","Opravdu smazat "+sel.username+"?",async function(){
