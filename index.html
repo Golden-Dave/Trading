@@ -296,6 +296,8 @@ function num(v,d){return (v<0?"−":"")+Math.abs(v).toLocaleString("cs-CZ",{mini
 function cls(v){return v>0?"pos":v<0?"neg":""}
 function pad(n){return String(n).padStart(2,"0")}
 function toLocalInput(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes())}
+/* procenta se znakem % před číslem, ve stejném tvaru jako částka v $ (např. %38,26) */
+function pctPre(v){if(!isFinite(v))return "—";return (v<0?"−":"")+"%"+num(Math.abs(v),2)}
 function dmyShort(d){return d.getDate()+"."+(d.getMonth()+1)+"."+String(d.getFullYear()).slice(-2)}
 function dmy(d){return d.getDate()+"."+(d.getMonth()+1)+"."+d.getFullYear()}
 function toast(m){var h=document.getElementById("toastHost");h.innerHTML='<div class="toast" role="status">'+esc(m)+'</div>';clearTimeout(toast._t);toast._t=setTimeout(function(){h.innerHTML=""},3000)}
@@ -499,7 +501,7 @@ function viewInv(u,side,st){
   return '<div class="tiles big">'+
    tile("Původní investice",'<span class="vrow"><span>'+usd(st.base)+'</span><span>'+dmyShort(new Date(st.start))+'</span></span>')+
    tile("Stav účtu",'<span class="'+cls(st.current-st.base)+'">'+usd(st.current)+'</span>',[me().isAdmin?"koeficient "+num(st.coef,2):"",st.wd?"výběry "+usd(st.wd):""].filter(Boolean).join(" · "))+
-   tile('Aktuální <span class="nc">PnL</span>','<span class="vrow"><span class="'+cls(st.pnl)+'">'+usd(st.pnl)+'</span><span class="'+cls(st.pnl)+'">'+pct(st.base?st.pnl/st.base*100:NaN)+'</span></span>')+
+   tile('Aktuální <span class="nc">PnL</span>','<span class="vrow"><span class="'+cls(st.pnl)+'">'+usd(st.pnl)+'</span><span class="'+cls(st.pnl)+'">'+pctPre(st.base?st.pnl/st.base*100:NaN)+'</span></span>')+
    winTile(st)+
    (mb!=null?tile("Skutečný zůstatek (zadaný ručně)",usd(mb),"rozdíl proti výpočtu "+usd(mb-st.current,true),true):"")+
    '</div>';
