@@ -556,7 +556,7 @@ function chartSVG(side,b,unit){
 }
 function paintChart(el){
   var d=chartData[el.dataset.side],sc=el.querySelector(".chartscroll");if(!d||!sc)return;
-  var b=d.b,unit=d.unit,vals=d.vals,slot=d.slot,PW=d.PW,n=b.length,H=d.H||CH.H,L=CH.L,R=CH.R,T=CH.T+6,B=CH.B+4,bw=Math.min(54,slot*0.58);
+  var b=d.b,unit=d.unit,vals=d.vals,slot=d.slot,PW=d.PW,n=b.length,H=d.H||CH.H,L=CH.L,R=CH.R,F=d.fsx||1,T=(CH.T+6)*F,B=(CH.B+4)*F,bw=Math.min(54,slot*0.58);
   var k=sc.scrollWidth>0?PW/sc.scrollWidth:1,x0=sc.scrollLeft*k,x1=x0+(sc.clientWidth||sc.scrollWidth)*k;
   var i0=Math.max(0,Math.min(n-1,Math.floor((x0+bw/2)/slot))),i1=Math.max(i0,Math.min(n-1,Math.ceil((x1-bw/2)/slot)-1));
   if((i0+.5)*slot+bw/2<=x0+1&&i0<i1)i0++;
@@ -567,15 +567,15 @@ function paintChart(el){
   var y=function(v){return T+(hi-v)/(hi-lo)*(H-T-B)};
   var axisCol="rgba(234,241,255,.78)",grid="rgba(255,255,255,.08)",dec=step<1?(step<0.1?2:1):0,ax="",g="";
   for(var v=lo;v<=hi+step/2;v+=step){var yy=y(v);g+='<line x1="0" x2="'+(PW-R)+'" y1="'+yy+'" y2="'+yy+'" stroke="'+(Math.abs(v)<step/1e6?axisCol:grid)+'"/>';
-    ax+='<text x="'+(L-8)+'" y="'+(yy+4)+'" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="17" fill="'+axisCol+'">'+num(Math.abs(v)<step/1e6?0:v,dec)+'</text>'}
-  ax+='<text x="10" y="18" font-family="Nunito,sans-serif" font-size="18" font-weight="700" fill="'+axisCol+'">'+{pct:"%",pips:"pips",lot:"lot",usd:"$"}[unit]+'</text>';
+    ax+='<text x="'+(L-8)+'" y="'+(yy+4*F)+'" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="'+17*F+'" fill="'+axisCol+'">'+num(Math.abs(v)<step/1e6?0:v,dec)+'</text>'}
+  ax+='<text x="10" y="'+18*F+'" font-family="Nunito,sans-serif" font-size="'+18*F+'" font-weight="700" fill="'+axisCol+'">'+{pct:"%",pips:"pips",lot:"lot",usd:"$"}[unit]+'</text>';
   for(var i=Math.max(0,i0-1);i<=Math.min(n-1,i1+1);i++){var x=b[i],val=Math.max(lo,Math.min(hi,vals[i])),cx=slot*(i+.5),y0=y(0),y1=y(val),top=Math.min(y0,y1),hgt=Math.max(Math.abs(y1-y0),1.5);
     var sv=unit==="lot"?(isFinite(x.profit)?x.profit:isFinite(x.pct)?x.pct:x.pips):vals[i],col=sv>=0?"#2fe28c":"#ff4d61",vv=vals[i];
     var lab=unit==="pct"?pct(vv,true):unit==="pips"?(vv>0?"+":"")+num(vv,0)+" pips":unit==="lot"?num(vv,2)+" lot":usd(x.profit,true).replace(",00","");
     g+='<rect x="'+(cx-bw/2)+'" y="'+top+'" width="'+bw+'" height="'+hgt+'" rx="4" fill="'+col+'" fill-opacity=".85" style="filter:drop-shadow(0 0 6px '+col+')"/>';
-    g+='<text x="'+cx+'" y="'+(vv>=0?top-7:top+hgt+15)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="'+(n>7?17:19)+'" font-weight="600" fill="'+col+'">'+lab+'</text>';
+    g+='<text x="'+cx+'" y="'+(vv>=0?top-7*F:top+hgt+15*F)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="'+(n>7?17:19)*F+'" font-weight="600" fill="'+col+'">'+lab+'</text>';
     var lastLab=false;
-    g+='<text x="'+cx+'" y="'+(H-B+20)+'" text-anchor="middle" font-family="Nunito,sans-serif" font-size="'+(n>7?18:20)+'" fill="'+axisCol+'">'+x.label+(x.yr?'<tspan x="'+cx+'" dy="1.05em">'+x.yr+'</tspan>':'')+'</text>'}
+    g+='<text x="'+cx+'" y="'+(H-B+20*F)+'" text-anchor="middle" font-family="Nunito,sans-serif" font-size="'+(n>7?18:20)*F+'" fill="'+axisCol+'">'+x.label+(x.yr?'<tspan x="'+cx+'" dy="1.05em">'+x.yr+'</tspan>':'')+'</text>'}
   el.querySelector(".yax").innerHTML=ax;sc.firstChild.innerHTML=g;
 }
 /* graf se roztáhne do výšky podle volného místa v panelu (aspoň výchozí výška) */
@@ -583,6 +583,10 @@ function fitChartHeight(el){
   var d=chartData[el.dataset.side],sc=el.querySelector(".chartscroll"),ct=el.closest(".content");if(!d||!sc||!ct)return;
   var other=0;[].forEach.call(ct.children,function(c){if(c===el)return;var cs=getComputedStyle(c);other+=c.getBoundingClientRect().height+parseFloat(cs.marginTop)+parseFloat(cs.marginBottom)});
   var free=ct.clientHeight-other-6,ppu=sc.clientWidth/CH.VW,H=CH.H;
+  /* písmo grafu aspoň tak velké jako popisky dlaždic (na telefonu se graf zmenšuje, písmo ne) */
+  var target=parseFloat(getComputedStyle(ct).fontSize)*1.15*0.9,F=ppu>0?target/(17*ppu):1;F=F>1.05?F:1;
+  if(Math.abs(F-(d.fsx||1))>0.01){d.fsx=F;el._key=null;
+    var n=d.b.length,need=80*F;if(d.slot<need){d.slot=need;d.PW=n*need+CH.R;var sv=sc.querySelector("svg");sv.style.width=(d.PW/CH.VW*100)+"%";var vb=sv.getAttribute("viewBox").split(" ");vb[2]=d.PW;sv.setAttribute("viewBox",vb.join(" "))}}
   if(ppu>0&&free>0)H=Math.max(CH.H,Math.min(520,Math.floor(free/ppu)));
   if(H!==d.H){d.H=H;el._key=null;el.querySelectorAll("svg").forEach(function(v){var vb=v.getAttribute("viewBox").split(" ");vb[3]=H;v.setAttribute("viewBox",vb.join(" "))})}
 }
