@@ -610,8 +610,8 @@ function viewObch(u,side,st){
    tile("Obchody průměrně",num(st.trades.length/calP,2))+
    tile("Návratnost aktuálně",'<span class="'+cls(cur?cur.pct:0)+'">'+pct(cur?cur.pct:0,true)+'</span>')+
    tile("Návratnost průměrně",'<span class="'+cls(pcts.length?sumP/pcts.length:0)+'">'+pct(pcts.length?sumP/pcts.length:NaN,true)+'</span>')+
-   tile("Max. návratnost za "+word,'<span class="pos">'+pct(best>0?best:NaN,true)+'</span>',bestB&&best>0?bestB.label+" · "+usd(bestB.profit,true):"bez ziskového období")+
-   tile("Max. ztráta za "+word,'<span class="neg">'+pct(worst<0?worst:NaN,true)+'</span>',worstB&&worst<0?worstB.label+" · "+usd(worstB.profit,true):"bez ztrátového období")+
+   tile("Maximální návratnost",'<span class="pos">'+pct(best>0?best:NaN,true)+'</span>')+
+   tile("Maximální ztráta",'<span class="neg">'+pct(worst<0?worst:NaN,true)+'</span>')+
    '</div>';
 }
 function viewPrev(u,side,st){
