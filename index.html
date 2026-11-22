@@ -114,7 +114,8 @@ button.src{background:none;border:0;border-bottom:1px dashed currentColor;paddin
 .tile .k .nc{text-transform:none}
 .tile .vrow{display:flex;justify-content:space-between;align-items:baseline;gap:0 .3em;flex-wrap:nowrap;white-space:nowrap}.tile .vrow>:last-child{margin-left:auto}
 .wintile{display:flex;align-items:center;justify-content:space-between;gap:.6em}
-.wintile .wl{min-width:0}
+.wintile .wl{flex:0 0 auto;min-width:0}
+.wintile .v{white-space:nowrap}
 .wintile .pie{flex:0 0 auto;height:4.3em;width:4.3em;margin:-.35em 0;filter:drop-shadow(0 0 .35em rgba(47,226,140,.35))}
 .tile .k{font-size:.72em;text-transform:uppercase;letter-spacing:.08em;color:var(--label);font-weight:700}
 .tile .v{font-family:var(--f-mono);font-weight:600;font-size:1.5em;margin-top:.15em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;text-shadow:0 0 .5em rgba(255,255,255,.25)}
@@ -622,7 +623,14 @@ function placeMix(inp){
     if(bb>ol){var sh=(bb-ol)/2;b.style.left=Math.max(0,parseFloat(b.style.left)-sh)+"px";o.style.left=Math.min(W-o.offsetWidth,ol+sh)+"px"}}
 }
 /* řádek se dvěma hodnotami v dlaždici zůstane na jednom řádku – když se nevejde, písmo se úměrně zmenší */
-function fitRows(){document.querySelectorAll(".tile .vrow").forEach(function(r){r.style.fontSize="";
+/* Winrate: procento zůstane na jednom řádku; koláč se zmenší podle volného místa vedle něj */
+function fitPies(){document.querySelectorAll(".wintile").forEach(function(t){var pie=t.querySelector(".pie"),wl=t.querySelector(".wl"),v=t.querySelector(".v");if(!pie||!wl)return;
+  pie.style.width=pie.style.height="";pie.style.display="";if(v)v.style.fontSize="";
+  var cs=getComputedStyle(t),inner=t.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight),gap=parseFloat(cs.columnGap)||0;
+  var free=inner-wl.offsetWidth-gap,nat=pie.getBoundingClientRect().width;
+  if(free<nat){if(free>=26){pie.style.width=pie.style.height=Math.floor(free)+"px"}else{pie.style.display="none";
+    if(v&&wl.offsetWidth>inner)v.style.fontSize=(Math.floor(inner/wl.offsetWidth*100)/100*parseFloat(getComputedStyle(v).fontSize))+"px"}}})}
+function fitRows(){fitPies();document.querySelectorAll(".tile .vrow").forEach(function(r){r.style.fontSize="";
   var w=r.clientWidth,need=r.scrollWidth;if(need>w+1&&w>0)r.style.fontSize=(Math.floor(w/need*100)/100)+"em"})}
 function placeAllMix(){fitRows();document.querySelectorAll("input.mix").forEach(placeMix);initCharts()}
 window.addEventListener("resize",placeAllMix);
