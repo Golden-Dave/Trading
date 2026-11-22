@@ -218,6 +218,10 @@ input.mix:focus-visible::-webkit-slider-thumb{outline:2px solid var(--gold);outl
 div.f{display:flex;flex-direction:column;gap:.3em;font-size:.82em;color:var(--muted);font-weight:700;min-width:0}
 .lrow{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:26px}
 .act.mini{padding:3px 10px;font-size:12px;border-radius:8px}
+.chgbox{border:1px solid var(--gold);border-radius:12px;padding:10px 14px;margin:10px 0;background:rgba(255,210,60,.08)}
+.chgbox h4{margin:0 0 6px;color:var(--gold)}
+.chgrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:4px 0;font-size:13.5px}
+.chg{color:var(--gold);font-size:.8em}
 .admin h4.sec{grid-column:1/-1;margin:10px 0 0;font-size:16px}
 .hint.sec{grid-column:1/-1;margin:0}
 input.pick{cursor:pointer;text-overflow:ellipsis}
@@ -721,21 +725,32 @@ app.addEventListener("click",function(e){
   if(a==="menu"){if(me().isAdmin){adminOpen=true;adminSel=adminSel||me().id;return renderAdmin()}return renderAcct()}
   if(a==="admin"){adminOpen=true;adminSel=adminSel||me().id;return renderAdmin()}
   if(a==="back"){viewId=null;return renderMain()}
-  if(a==="dowd"){e.preventDefault();readPrev(t.closest("form"));var u=viewed(),amt=+u.transfer.withdraw;
+  if(a==="dowd"){e.preventDefault();var u=viewed(),wa=t.closest("form").querySelector('[data-f="withdraw"]');u.transfer.withdraw=wa?wa.value:"";var amt=+u.transfer.withdraw;
     if(!(amt>0)){toast("Zadejte částku k výběru.");return}
     var wside=t.dataset.side||u.transfer.wdSide;u.transfer.withdrawals.push({t:new Date().toISOString(),amount:amt,side:wside});u.transfer.withdraw="";
     persistTransfer(u);renderMain();toast("Výběr "+usd(amt)+" zaznamenán.")}
 });
-app.addEventListener("submit",function(e){var f=e.target.closest(".prevf");if(!f)return;e.preventDefault();readPrev(f);persistTransfer(viewed()).then(function(){toast("Nastavení převodu uloženo.")});renderMain()});
+app.addEventListener("submit",function(e){var f=e.target.closest(".prevf");if(!f)return;e.preventDefault();
+  var u=viewed(),T=u.transfer,before=[T.robotPct,T.slRobot,T.slManual].join("|");
+  f.querySelectorAll('[data-f]').forEach(function(el){var k=el.dataset.f;if(k==="withdraw")return;T[k]=k==="robotPct"?+el.value:el.value});
+  /* změnu, kterou uložil jiný uživatel než správce, uvidí správce ve Správě účtů */
+  if(before!==[T.robotPct,T.slRobot,T.slManual].join("|")&&!me().isAdmin)T.lastChange={t:new Date().toISOString(),robotPct:T.robotPct,slRobot:T.slRobot,slManual:T.slManual};
+  persistTransfer(u).then(function(){toast("Nastavení převodu uloženo.")});renderMain()});
 app.addEventListener("input",function(e){if(e.target.classList&&e.target.classList.contains("mix")){e.target.setAttribute("style",mixStyle(e.target.value));placeMix(e.target);
   var lb=e.target.closest("form")&&e.target.closest("form").querySelector(".mixlab");if(lb){var b=lb.querySelectorAll("b");if(b.length===2){b[0].textContent=e.target.value+" %";b[1].textContent=(100-e.target.value)+" %"}}}});
-app.addEventListener("change",function(e){if(e.target.type==="range"){readPrev(e.target.closest(".prevf"));persistTransfer(viewed());renderMain()}});
+
 function readPrev(f){var u=viewed();f.querySelectorAll("[data-f]").forEach(function(el){var k=el.dataset.f;u.transfer[k]=k==="robotPct"?+el.value:el.value})}
 
 /* ---------- password change ---------- */
 var ov=null;
 function ensureOv(){if(!ov){ov=document.createElement("div");ov.className="overlay";document.body.appendChild(ov);ov.addEventListener("click",adminClick);ov.addEventListener("click",pickClick);ov.addEventListener("keydown",pickClick);ov.addEventListener("change",pickChange);ov.addEventListener("submit",adminSubmit)}}
 function acctLine(m){return '<span class="who">Přihlášen: <b>'+esc(m.username)+'</b>'+(m.isAdmin?' · správce':'')+'</span><span class="who" id="lastUpd">'+esc(lastUpd)+'</span>'}
+/* změny nastavení převodu, které uživatelé uložili a správce ještě nepotvrdil */
+function newChange(u){var c=u.transfer&&u.transfer.lastChange;return !!(c&&c.t&&u.transfer.changeAck!==c.t)}
+function changeText(u){var c=u.transfer.lastChange,d=new Date(c.t);
+  return '<b>'+esc(u.username)+'</b> změnil '+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+' nastavení převodu: rozdělení robot '+c.robotPct+' % / manuál '+(100-c.robotPct)+' %, Stop loss robot '+esc(c.slRobot||"0")+' %, manuál '+esc(c.slManual||"0")+' %.'}
+function changesHTML(){var l=DB.users.filter(newChange);if(!l.length)return "";
+  return '<div class="chgbox"><h4>Změny nastavení</h4>'+l.map(function(u){return '<div class="chgrow"><span>'+changeText(u)+'</span><button class="chip" data-x="ack" data-id="'+u.id+'">Beru na vědomí</button></div>'}).join("")+'</div>'}
 function renderAcct(){
   ensureOv();var m=me();
   ov.innerHTML='<div class="pwbox" role="dialog" aria-label="Účet"><h3>Účet</h3>'+acctLine(m)+
@@ -839,7 +854,8 @@ function renderAdmin(){
   var m=me();if(!m||!m.isAdmin){closeOv();return}
   var sel=DB.users.find(function(u){return u.id===adminSel})||m;adminSel=sel.id;var S=sel.settings;
   ov.innerHTML='<div class="admin" role="dialog" aria-label="Správa účtů"><div class="row" style="justify-content:space-between"><h3>Správa účtů</h3><div class="row">'+acctLine(m)+'<button class="chip" data-x="pw">Změnit heslo</button><button class="chip" data-x="logout">Odhlásit</button><button class="chip" data-x="close">Zavřít</button></div></div>'+
-   '<div class="agrid"><div><div class="ulist">'+DB.users.map(function(u){return '<button class="ubtn" data-x="sel" data-id="'+u.id+'" aria-current="'+(u.id===sel.id)+'"><b>'+esc(u.username)+'</b><small>'+(u.isAdmin?"správce · ":"")+(u.trades.robot.length+u.trades.manual.length)+' obchodů</small></button>'}).join("")+'</div>'+
+   changesHTML()+
+   '<div class="agrid"><div><div class="ulist">'+DB.users.map(function(u){return '<button class="ubtn" data-x="sel" data-id="'+u.id+'" aria-current="'+(u.id===sel.id)+'"><b>'+esc(u.username)+(newChange(u)?' <span class="chg" title="Změnil nastavení převodu">●</span>':'')+'</b><small>'+(u.isAdmin?"správce · ":"")+(u.trades.robot.length+u.trades.manual.length)+' obchodů</small></button>'}).join("")+'</div>'+
    '<h4>Nový účet</h4><form id="fNew" class="ulist"><label class="f">Uživatelské jméno<input type="text" id="nU" autocomplete="off" required></label><label class="f">Heslo (min. 6 znaků)<input type="password" id="nP" autocomplete="new-password" minlength="6" required></label><button class="act">Založit účet</button></form>'+
    '<h4>Záloha dat</h4><div class="ulist"><button class="act ghost" data-x="export">Kopírovat zálohu</button><textarea id="bk" placeholder="Sem vložte zálohu pro obnovení"></textarea><button class="act ghost" data-x="import">Obnovit ze zálohy</button><p class="hint">Obnova přiřadí data podle uživatelského jména. Účty musí být založené předem.</p></div></div>'+
    '<div class="box"><div class="row" style="justify-content:space-between"><h4 style="margin:0">Účet: '+esc(sel.username)+'</h4><div class="row"><button class="act ghost" data-x="view">Zobrazit panel účtu</button>'+
@@ -884,6 +900,7 @@ async function adminClick(e){
   if(x==="pw"){adminOpen=false;return renderPw()}
   if(x==="logout")return logout();
   if(x==="sel"){adminSel=b.dataset.id;return renderAdmin()}
+  if(x==="ack"){var au=DB.users.find(function(u){return u.id===b.dataset.id});if(au&&au.transfer.lastChange){au.transfer.changeAck=au.transfer.lastChange.t;persistTransfer(au)}return renderAdmin()}
   if(x==="view"){viewId=sel.id===me().id?null:sel.id;return closeOv()}
   if(x==="del")return arm(b,"del","Opravdu smazat "+sel.username+"?",async function(){
     try{await userRef(sel.id).collection("trades").doc("robot").delete();await userRef(sel.id).collection("trades").doc("manual").delete();await userRef(sel.id).delete()}catch(err){return fail(err)}
