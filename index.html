@@ -738,6 +738,8 @@ app.addEventListener("submit",function(e){var f=e.target.closest(".prevf");if(!f
   /* změnu, kterou uložil jiný uživatel než správce, uvidí správce ve Správě účtů */
   if(before!==[T.robotPct,T.slRobot,T.slManual].join("|")&&!me().isAdmin)T.lastChange={t:new Date().toISOString(),robotPct:T.robotPct,slRobot:T.slRobot,slManual:T.slManual};
   persistTransfer(u).then(function(){toast("Nastavení převodu uloženo.")});renderMain()});
+/* v záložce Převod Enter nic neukládá – ukládá se jen tlačítkem Uložit nastavení */
+app.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target.tagName==="INPUT"&&e.target.closest(".prevf")){e.preventDefault();e.target.blur()}});
 app.addEventListener("input",function(e){if(e.target.classList&&e.target.classList.contains("mix")){
   /* rozdělení investice je společné – jezdec se hýbe v obou stojáncích najednou */
   app.querySelectorAll("input.mix").forEach(function(m){if(m!==e.target)m.value=e.target.value;m.setAttribute("style",mixStyle(e.target.value));placeMix(m)});
