@@ -414,7 +414,7 @@ function render(){
   renderMain();
 }
 function sceneHTML(a,b){return '<div class="scene"><button type="button" class="titleimg" data-a="menu" aria-label="XAU/USD – účet a nastavení" title="Účet a nastavení"></button><div class="stands">'+a+b+'</div></div>'}
-function shell(side,head,body,btns){return '<section class="stand '+side+'" aria-label="'+(side==="robot"?"Robotické":"Manuální")+' obchodování"><div class="frame"><div class="shead">'+head+'</div><div class="content">'+body+'</div>'+(btns||'')+'</div></section>'}
+function shell(side,head,body,btns){return '<section class="stand '+side+'" aria-label="'+(side==="robot"?"Robotické":"Manuální")+' obchody"><div class="frame"><div class="shead">'+head+'</div><div class="content">'+body+'</div>'+(btns||'')+'</div></section>'}
 /* úvodní obrazovka (přihlášení, založení správce, hlášky): jen nadpis XAU/USD a jedno okno */
 function authScene(inner){return '<div class="scene authscene"><div class="titleimg" role="img" aria-label="XAU/USD"></div><section class="authcard" aria-label="Přihlášení">'+inner+'</section></div>'}
 function renderMsg(title,text){app.innerHTML=authScene('<div class="authf"><h3>'+esc(title)+'</h3><p>'+text+'</p></div>')}
@@ -481,7 +481,7 @@ function stand(u,side){
   var st=stats(u,side),s=ui[side],url=side==="robot"?u.settings.robotUrl:u.settings.manualUrl;
   var tabs=[["inv","Investice"],["graf","Graf"],["obch","Obchod"],["prev","Převod"]];
   var body={inv:viewInv,graf:viewGraf,obch:viewObch,prev:viewPrev}[s.tab](u,side,st);
-  var head='<h2>'+(side==="robot"?"Robotické obchodování":"Manuální obchodování")+'</h2>'+(me().isAdmin&&(/^https?:\/\//i.test(url)||st.trades.length)?'<button type="button" class="src" data-a="list" data-side="'+side+'">Zdroj</button>':'');
+  var head='<h2>'+(side==="robot"?"Robotické obchody":"Manuální obchody")+'</h2>'+(me().isAdmin&&(/^https?:\/\//i.test(url)||st.trades.length)?'<button type="button" class="src" data-a="list" data-side="'+side+'">Zdroj</button>':'');
   var btns='<div class="btns">'+tabs.map(function(t,i){return '<button class="hot h'+i+'" data-side="'+side+'" data-tab="'+t[0]+'" aria-pressed="'+(s.tab===t[0])+'" aria-label="'+t[1]+'" title="'+t[1]+'"><span class="ring"></span></button>'}).join("")+'</div>';
   return shell(side,head,body,btns);
 }
