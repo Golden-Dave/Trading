@@ -488,7 +488,7 @@ function seg(side,key,opts){return '<div class="seg" role="group">'+opts.map(fun
 function viewInv(u,side,st){
   var mb=st.manualBal,sd=new Date(st.start);
   return '<div class="tiles">'+
-   tile("Původní investice",usd(st.base),st.share+" % z kapitálu "+usd(+u.settings.capital||0))+
+   tile("Původní investice",usd(st.base),"Vloženo "+dmy(new Date(st.start)))+
    tile("Stav účtu",'<span class="'+cls(st.current-st.base)+'">'+usd(st.current)+'</span>',[me().isAdmin?"koeficient "+num(st.coef,2):"",st.wd?"výběry "+usd(st.wd):""].filter(Boolean).join(" · "))+
    tile('Aktuální <span class="nc">PnL</span>','<span class="vrow"><span class="'+cls(st.pnl)+'">'+usd(st.pnl,true)+'</span><span class="'+cls(st.pnl)+'">'+pct(st.base?st.pnl/st.base*100:NaN,true)+'</span></span>')+
    winTile(st)+
