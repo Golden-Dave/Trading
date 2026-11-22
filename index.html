@@ -606,8 +606,8 @@ function viewObch(u,side,st){
   var word={day:"den",week:"týden",month:"měsíc",year:"rok"}[per],cw={day:"dnes",week:"tento týden",month:"tento měsíc",year:"letos"}[per],
       tw={day:"obchodní den",week:"týden s obchody",month:"měsíc s obchody",year:"rok s obchody"}[per];
   return head+'<div class="tiles">'+
-   tile("Obchodů – "+cw,String(cur?cur.n:0),"celkem "+st.trades.length+" od "+dmy(new Date(st.start)))+
-   tile("Průměrně obchodů za "+word,num(st.trades.length/calP,2),num(st.trades.length/Math.max(1,b.length),2)+" na "+tw)+
+   tile('Obchody <span class="nc">aktuálně</span>',String(cur?cur.n:0))+
+   tile('Obchody <span class="nc">průměrně</span>',num(st.trades.length/calP,2))+
    tile("Návratnost – "+cw,'<span class="'+cls(cur?cur.pct:0)+'">'+pct(cur?cur.pct:0,true)+'</span>',"průměr za "+word+": "+pct(pcts.length?sumP/pcts.length:NaN,true))+
    tile("Celková návratnost",'<span class="'+cls(st.pnl)+'">'+pct(st.base?st.pnl/st.base*100:NaN,true)+'</span>',b.length+" období ("+word+")")+
    tile("Max. návratnost za "+word,'<span class="pos">'+pct(best>0?best:NaN,true)+'</span>',bestB&&best>0?bestB.label+" · "+usd(bestB.profit,true):"bez ziskového období")+
