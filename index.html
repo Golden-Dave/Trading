@@ -200,6 +200,7 @@ label.mixlab{display:block;line-height:1.5;font-size:min(13px,1em)}
 .prevf input[type=number]{font-size:1.9em;font-family:var(--f-mono);font-weight:600;padding:.12em .45em}
 .prevf .doact .act{font-size:1.15em;padding:.72em 1em}
 .prevf .grid2{gap:1.6em .7em}
+.prevf .act.go{background:#15b866;border-color:#3dffa0;color:#04140b;box-shadow:0 0 .9em rgba(53,242,154,.55)}
 input.mix:focus-visible::-webkit-slider-thumb{outline:2px solid var(--gold);outline-offset:2px}
 .wd{font-family:var(--f-mono);font-size:.8em;color:var(--muted);margin:.4em 0 0;padding:0;list-style:none}
 .wd li{display:flex;justify-content:space-between;gap:.5em;border-bottom:1px solid var(--line);padding:.2em 0}
@@ -745,11 +746,19 @@ app.addEventListener("submit",function(e){var f=e.target.closest(".prevf");if(!f
   /* změnu, kterou uložil jiný uživatel než správce, uvidí správce ve Správě účtů */
   if(before!==[T.robotPct,T.slRobot,T.slManual].join("|")&&!me().isAdmin)T.lastChange={t:new Date().toISOString(),robotPct:T.robotPct,slRobot:T.slRobot,slManual:T.slManual};
   persistTransfer(u).then(function(){toast("Nastavení převodu uloženo.")});renderMain()});
+/* Převod: tlačítko zezelená, když je co uložit / provést (neuložené změny proti uloženým hodnotám) */
+function updDirty(){var T=viewed().transfer;
+  app.querySelectorAll(".prevf").forEach(function(f){
+    var r=f.querySelector("input.mix"),sl=f.querySelector('[data-f^="sl"]'),wa=f.querySelector('[data-f="withdraw"]');
+    var dirty=(r&&+r.value!==+T.robotPct)||(sl&&String(sl.value).trim()!==String(T[sl.dataset.f]||"0").trim());
+    var sb=f.querySelector('[data-a="saveprev"]'),pb=f.querySelector('[data-a="dowd"]');
+    if(sb)sb.classList.toggle("go",!!dirty);if(pb)pb.classList.toggle("go",!!(wa&&+String(wa.value).replace(",",".")>0))})}
+app.addEventListener("input",function(e){if(e.target.closest&&e.target.closest(".prevf"))updDirty()});
 /* v záložce Převod Enter nic neukládá – ukládá se jen tlačítkem Uložit nastavení */
 app.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target.tagName==="INPUT"&&e.target.closest(".prevf")){e.preventDefault();e.target.blur()}});
 app.addEventListener("input",function(e){if(e.target.classList&&e.target.classList.contains("mix")){
   /* rozdělení investice je společné – jezdec se hýbe v obou stojáncích najednou */
-  app.querySelectorAll("input.mix").forEach(function(m){if(m!==e.target)m.value=e.target.value;m.setAttribute("style",mixStyle(e.target.value));placeMix(m)});
+  app.querySelectorAll("input.mix").forEach(function(m){if(m!==e.target)m.value=e.target.value;m.setAttribute("style",mixStyle(e.target.value));placeMix(m)});updDirty();
   var lb=e.target.closest("form")&&e.target.closest("form").querySelector(".mixlab");if(lb){var b=lb.querySelectorAll("b");if(b.length===2){b[0].textContent=e.target.value+" %";b[1].textContent=(100-e.target.value)+" %"}}}});
 
 function readPrev(f){var u=viewed();f.querySelectorAll("[data-f]").forEach(function(el){var k=el.dataset.f;u.transfer[k]=k==="robotPct"?+el.value:el.value})}
