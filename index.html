@@ -551,8 +551,8 @@ function paintChart(el){
   var y=function(v){return T+(hi-v)/(hi-lo)*(H-T-B)};
   var axisCol="rgba(234,241,255,.78)",grid="rgba(255,255,255,.08)",dec=step<1?(step<0.1?2:1):0,ax="",g="";
   for(var v=lo;v<=hi+step/2;v+=step){var yy=y(v);g+='<line x1="0" x2="'+(PW-R)+'" y1="'+yy+'" y2="'+yy+'" stroke="'+(Math.abs(v)<step/1e6?axisCol:grid)+'"/>';
-    ax+='<text x="'+(L-8)+'" y="'+(yy+4)+'" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="17" fill="'+axisCol+'">'+num(Math.abs(v)<step/1e6?0:v,dec)+(unit==="pct"?"%":unit==="usd"?"$":"")+'</text>'}
-  ax+='<text x="10" y="18" font-family="Nunito,sans-serif" font-size="18" font-weight="700" fill="'+axisCol+'">'+{pct:"%",pips:"pips",lot:"lot",usd:"USD"}[unit]+'</text>';
+    ax+='<text x="'+(L-8)+'" y="'+(yy+4)+'" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="17" fill="'+axisCol+'">'+num(Math.abs(v)<step/1e6?0:v,dec)+'</text>'}
+  ax+='<text x="10" y="18" font-family="Nunito,sans-serif" font-size="18" font-weight="700" fill="'+axisCol+'">'+{pct:"%",pips:"pips",lot:"lot",usd:"$"}[unit]+'</text>';
   for(var i=Math.max(0,i0-1);i<=Math.min(n-1,i1+1);i++){var x=b[i],val=Math.max(lo,Math.min(hi,vals[i])),cx=slot*(i+.5),y0=y(0),y1=y(val),top=Math.min(y0,y1),hgt=Math.max(Math.abs(y1-y0),1.5);
     var sv=unit==="lot"?(isFinite(x.profit)?x.profit:isFinite(x.pct)?x.pct:x.pips):vals[i],col=sv>=0?"#2fe28c":"#ff4d61",vv=vals[i];
     var lab=unit==="pct"?pct(vv,true):unit==="pips"?(vv>0?"+":"")+num(vv,0)+" pips":unit==="lot"?num(vv,2)+" lot":usd(x.profit,true).replace(",00","");
