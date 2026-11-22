@@ -513,7 +513,7 @@ function stand(u,side){
   var tabs=[["inv","Investice"],["graf","Graf"],["obch","Statistika"],["prev","Převod"]];
   var body={inv:viewInv,graf:viewGraf,obch:viewObch,prev:viewPrev}[s.tab](u,side,st);
   var head='<h2>'+(side==="robot"?"Robotické obchody":"Manuální obchody")+'</h2>'+(me().isAdmin&&(/^https?:\/\//i.test(url)||st.trades.length)?'<button type="button" class="src" data-a="list" data-side="'+side+'">Zdroj</button>':'');
-  var btns='<div class="btns">'+tabs.map(function(t,i){return '<button class="hot h'+i+'" data-side="'+side+'" data-tab="'+t[0]+'" aria-pressed="'+(s.tab===t[0])+'" aria-label="'+t[1]+'" title="'+t[1]+'"><span class="ring"></span></button>'}).join("")+'</div>';
+  var btns='<div class="btns">'+tabs.map(function(t,i){return '<button class="hot h'+i+'" data-side="'+side+'" data-tab="'+t[0]+'" aria-pressed="'+(s.tab===t[0])+'" aria-label="'+t[1]+'"><span class="ring"></span></button>'}).join("")+'</div>';
   return shell(side,head,body,btns);
 }
 function noData(){return '<div class="empty">Zatím tu nejsou žádné obchody od nastaveného data.<br>Správce je nahraje v sekci <b>Správa účtů → Ruční aktualizace</b>.</div>'}
