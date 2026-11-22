@@ -301,7 +301,7 @@ function simulate(tr,base,coef,pctMode){
     var cur=eq,items=[];
     W.forEach(function(day){var ds=cur;day.forEach(function(t){var raw=pctMode?ds*t.pct/100:t.profit;cur+=raw;items.push([t,raw])})});
     var sum=cur-eq,f=sum>0?coef:1;
-    items.forEach(function(x){out.push(pctMode?Object.assign({},x[0],{srcProfit:x[0].profit,profit:x[1],adj:x[1]*f}):Object.assign({},x[0],{adj:x[1]*f}))});
+    items.forEach(function(x){out.push(pctMode?Object.assign({},x[0],{srcProfit:x[0].profit,profit:x[1],adj:x[1]*f,f:f}):Object.assign({},x[0],{adj:x[1]*f,f:f}))});
     eq+=sum*f});
   return out;
 }
@@ -331,7 +331,7 @@ function buckets(st,per){
   var map={},order=[];
   st.trades.forEach(function(t){var s=periodStart(new Date(t.t),per),k=s.getTime();
     if(!map[k]){map[k]={start:s,profit:0,pips:0,lots:0,n:0,nx:0};order.push(k)}
-    var b=map[k];b.profit+=t.adj;b.pips+=(+t.pips||0);b.lots+=(+t.lots||0);b.n++;if(!t.sym)b.nx++});
+    var b=map[k];b.profit+=t.adj;b.pips+=(+t.pips||0)*(t.f==null?1:t.f);b.lots+=(+t.lots||0)*(t.f==null?1:t.f);b.n++;if(!t.sym)b.nx++});
   order.sort(function(a,b){return a-b});
   var bal=st.base;
   return order.map(function(k){var b=map[k];b.pct=bal>0?b.profit/bal*100:NaN;b.label=bucketLabel(b.start,per);bal+=b.profit;return b});
@@ -348,7 +348,7 @@ function bucketsAll(u,side,st,per){
   var B=st.base>0?st.base:1,sim=pre.length?simulate(pre,B,st.coef,hasPct):[],bal=B;
   sim.forEach(function(t){var s=periodStart(new Date(t.t),per),k=s.getTime();
     if(!pm[k]){pm[k]={start:s,pips:0,lots:0,n:0,nx:0,adj:0,bal:bal};po.push(k)}
-    var b=pm[k];b.pips+=(+t.pips||0);b.lots+=(+t.lots||0);b.n++;if(!t.sym)b.nx++;
+    var b=pm[k];b.pips+=(+t.pips||0)*(t.f==null?1:t.f);b.lots+=(+t.lots||0)*(t.f==null?1:t.f);b.n++;if(!t.sym)b.nx++;
     b.adj+=t.adj;bal+=t.adj});
   po.forEach(function(k){var b=pm[k],g=hasPct&&b.bal>0?b.adj/b.bal*100:NaN,usdv=st.base>0?b.adj:0,m=map[k];
     if(m){m.pips+=b.pips;m.lots+=b.lots;m.n+=b.n;m.nx+=b.nx;m.profit+=usdv;m.pct=isFinite(g)&&isFinite(m.pct)?((1+g/100)*(1+m.pct/100)-1)*100:m.pct}
