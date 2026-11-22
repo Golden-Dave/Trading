@@ -48,6 +48,12 @@ button.titleimg{border:0;padding:0;cursor:pointer}
   .stands{grid-template-columns:1fr 1fr;gap:0}
   .titleimg{position:absolute;top:0;left:calc(405/1920*100%);width:calc(1130/1920*100%);margin:0;z-index:2;-webkit-mask-image:none;mask-image:none}
 }
+/* telefon: stojánky jsou pod sebou a okraje jejich obrázků (zbytky záře nadpisu a sousedního stojánku) by byly vidět – okraje se jemně ztratí do pozadí */
+@media (max-width:759px){
+  .frame{-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 4%,#000 97%,transparent 100%),linear-gradient(to right,transparent 0,#000 9%,#000 91%,transparent 100%);
+    -webkit-mask-composite:source-in;mask-image:linear-gradient(to bottom,transparent 0,#000 4%,#000 97%,transparent 100%),linear-gradient(to right,transparent 0,#000 9%,#000 91%,transparent 100%);mask-composite:intersect}
+  .titleimg{-webkit-mask-image:radial-gradient(ellipse 60% 58% at 50% 40%,#000 60%,transparent 100%);mask-image:radial-gradient(ellipse 60% 58% at 50% 40%,#000 60%,transparent 100%)}
+}
 @media (prefers-reduced-motion:no-preference){.titleimg{animation:flick 7s infinite}}
 @keyframes flick{0%,93%,100%{opacity:1}94%{opacity:.8}95%{opacity:1}97%{opacity:.88}}
 
