@@ -128,7 +128,8 @@ button.src{background:none;border:0;border-bottom:1px dashed currentColor;paddin
 /* forms */
 label.f{display:flex;flex-direction:column;gap:.3em;font-size:.82em;color:var(--muted);font-weight:700;min-width:0}
 input[type=text],input[type=password],input[type=number],input[type=datetime-local],input[type=url],select,textarea{
-  background:rgba(0,0,0,.5);border:1px solid var(--line);border-radius:.6em;padding:.5em .7em;font-size:1em;width:100%;min-width:0}
+  background:rgba(255,255,255,.045);border:1px solid rgba(190,210,255,.42);border-radius:.6em;padding:.5em .7em;font-size:1em;width:100%;min-width:0;box-sizing:border-box}
+input[type=text]:hover,input[type=password]:hover,input[type=number]:hover,input[type=datetime-local]:hover,input[type=url]:hover,select:hover,textarea:hover{border-color:rgba(210,225,255,.7)}
 .content input,.content select{font-size:1.1em}
 textarea{font-family:var(--f-mono);font-size:12px;min-height:90px;resize:vertical}
 input:focus,select:focus,textarea:focus{border-color:var(--gold);outline:none}
