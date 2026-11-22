@@ -115,6 +115,10 @@ button.src{background:none;border:0;border-bottom:1px dashed currentColor;paddin
 .tiles.big{gap:.9em}
 .tiles.big .tile{font-size:1.15em;padding:1em .95em;min-height:7.2em;display:flex;flex-direction:column;justify-content:center}
 .tiles.big .tile.wintile{flex-direction:row;justify-content:space-between}
+/* Statistika: šest velkých dlaždic, které vyplní volnou výšku panelu */
+.content:has(.tiles.six){display:flex;flex-direction:column}
+.tiles.big.six{flex:1;min-height:0;grid-auto-rows:1fr;gap:.6em;margin-top:.5em}
+.tiles.big.six .tile{min-height:0;padding:.55em 1em}
 .tiles.big .tile .k{font-size:.9em}
 .tiles.big .tile .v{font-size:1.65em}
 .tiles.big .tile .s{font-size:.95em}
@@ -605,7 +609,7 @@ function viewObch(u,side,st){
   var sumP=pcts.reduce(function(a,v){return a+v},0);
   var word={day:"den",week:"týden",month:"měsíc",year:"rok"}[per],cw={day:"dnes",week:"tento týden",month:"tento měsíc",year:"letos"}[per],
       tw={day:"obchodní den",week:"týden s obchody",month:"měsíc s obchody",year:"rok s obchody"}[per];
-  return head+'<div class="tiles">'+
+  return head+'<div class="tiles big six">'+
    tile("Obchody aktuálně",String(cur?cur.n:0))+
    tile("Obchody průměrně",num(st.trades.length/calP,2))+
    tile("Návratnost aktuálně",'<span class="'+cls(cur?cur.pct:0)+'">'+pct(cur?cur.pct:0,true)+'</span>')+
