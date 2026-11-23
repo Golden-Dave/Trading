@@ -151,7 +151,7 @@ button.src{background:none;border:0;border-bottom:1px dashed currentColor;paddin
 .seg button{border:0;background:none;padding:.32em .85em;border-radius:999px;font-size:.98em;font-weight:700;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--c);color:#fff;box-shadow:0 0 .7em var(--c)}
 @media (max-width:520px){.seg button{font-size:.9em;padding:.3em .62em}}
-.ctrls{display:flex;gap:.6em;flex-wrap:wrap;justify-content:space-between;margin-bottom:.5em}
+.ctrls{display:flex;gap:.6em;flex-wrap:wrap-reverse;justify-content:space-between;margin-bottom:.5em}
 .chart{width:100%;display:flex;align-items:flex-start}
 .chart svg{display:block;height:auto}
 .chart .yax{flex:0 0 10.9375%;width:10.9375%}
@@ -572,7 +572,7 @@ function viewGraf(u,side,st){
 }
 /* Graf se kreslí ve dvou krocích: chartSVG připraví osu a posuvnou plochu, paintChart do nich vykreslí sloupce.
    Rozsah osy Y se počítá jen ze sloupců, které jsou právě vidět, a při posunu grafu se přepočítává. */
-var chartKeep={},chartData={},CH={H:262,L:70,R:10,T:34,B:44,VW:570};
+var FMAX=1.3,chartKeep={},chartData={},CH={H:262,L:70,R:10,T:34,B:44,VW:570};
 function chartSVG(side,b,unit){
   var n=b.length,slot=n>7?80:(CH.VW-CH.R)/Math.max(n,1),PW=n>7?n*slot+CH.R:CH.VW;
   chartData[side]={b:b,unit:unit,slot:slot,PW:PW,
@@ -600,11 +600,11 @@ function paintChart(el){
     var sv=unit==="lot"?(isFinite(x.profit)?x.profit:isFinite(x.pct)?x.pct:x.pips):vals[i],col=sv>=0?"#2fe28c":"#ff4d61",vv=vals[i];
     /* popisek sloupce: jen číslo, jednotka je u osy vlevo nahoře */
     /* bez znaménka – zisk/ztrátu rozlišuje barva */
-    var lab=unit==="pct"?(isFinite(vv)?num(Math.abs(vv),2):"—"):unit==="pips"?num(Math.abs(vv),0):unit==="lot"?num(Math.abs(vv),2):num(Math.abs(x.profit),2).replace(/,00$/,"");
+    var lab=unit==="pct"?(isFinite(vv)?num(Math.abs(vv),2):"—"):unit==="pips"?num(Math.abs(vv),0):unit==="lot"?num(Math.abs(vv),2):(Math.abs(x.profit)>=100?num(Math.round(Math.abs(x.profit)),0):num(Math.abs(x.profit),2).replace(/,00$/,""));
     g+='<rect x="'+(cx-bw/2)+'" y="'+top+'" width="'+bw+'" height="'+hgt+'" rx="4" fill="'+col+'" fill-opacity=".85" style="filter:drop-shadow(0 0 6px '+col+')"/>';
-    g+='<text x="'+cx+'" y="'+(vv>=0?top-7*F:top+hgt+15*F)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="'+(n>7?17:19)*F+'" font-weight="600" fill="'+col+'">'+lab+'</text>';
+    g+='<text x="'+cx+'" y="'+(vv>=0?top-7*F:top+hgt+15*F)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="'+Math.min((n>7?17:19)*F,slot*0.96/(lab.length*0.6))+'" font-weight="600" fill="'+col+'">'+lab+'</text>';
     var lastLab=false;
-    g+='<text x="'+cx+'" y="'+(H-B+20*F)+'" text-anchor="middle" font-family="Nunito,sans-serif" font-size="'+(n>7?18:20)*F+'" fill="'+axisCol+'">'+x.label+(x.yr?'<tspan x="'+cx+'" dy="1.05em">'+x.yr+'</tspan>':'')+'</text>'}
+    g+='<text x="'+cx+'" y="'+(H-B+20*F)+'" text-anchor="middle" font-family="Nunito,sans-serif" font-size="'+Math.min((n>7?18:20)*F,slot*0.94/(String(x.label).length*0.55))+'" fill="'+axisCol+'">'+x.label+(x.yr?'<tspan x="'+cx+'" dy="1.05em">'+x.yr+'</tspan>':'')+'</text>'}
   el.querySelector(".yax").innerHTML=ax;sc.firstChild.innerHTML=g;
 }
 /* graf se roztáhne do výšky podle volného místa v panelu (aspoň výchozí výška) */
@@ -613,9 +613,9 @@ function fitChartHeight(el){
   var other=0;[].forEach.call(ct.children,function(c){if(c===el)return;var cs=getComputedStyle(c);other+=c.getBoundingClientRect().height+parseFloat(cs.marginTop)+parseFloat(cs.marginBottom)});
   var free=ct.clientHeight-other-6,ppu=sc.clientWidth/CH.VW,H=CH.H;
   /* písmo grafu aspoň tak velké jako popisky dlaždic (na telefonu se graf zmenšuje, písmo ne) */
-  var target=parseFloat(getComputedStyle(ct).fontSize)*1.15*0.9,F=ppu>0?target/(17*ppu):1;F=F>1.05?F:1;
+  var target=parseFloat(getComputedStyle(ct).fontSize)*1.15*0.9,F=ppu>0?target/(17*ppu):1;F=F>1.05?Math.min(F,FMAX):1;
   if(Math.abs(F-(d.fsx||1))>0.01){d.fsx=F;el._key=null;
-    var n=d.b.length,need=80*F;if(d.slot<need){d.slot=need;d.PW=n*need+CH.R;var sv=sc.querySelector("svg");sv.style.width=(d.PW/CH.VW*100)+"%";var vb=sv.getAttribute("viewBox").split(" ");vb[2]=d.PW;sv.setAttribute("viewBox",vb.join(" "))}}
+  }  /* vždy je vidět 7 období – písmo se tomu přizpůsobí (viz omezení F výše) */
   if(ppu>0&&free>0)H=Math.max(CH.H,Math.min(520,Math.floor(free/ppu)));
   if(H!==d.H){d.H=H;el._key=null;el.querySelectorAll("svg").forEach(function(v){var vb=v.getAttribute("viewBox").split(" ");vb[3]=H;v.setAttribute("viewBox",vb.join(" "))})}
 }
