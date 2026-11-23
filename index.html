@@ -132,6 +132,7 @@ button.src{background:none;border:0;border-bottom:1px dashed currentColor;paddin
 .tiles.big .tile .s{font-size:.95em}
 .tiles.big .wintile .pie{height:4.6em;width:4.6em;margin:-.4em 0}
 .tile{border:1px solid color-mix(in srgb,var(--hi) 38%,transparent);border-radius:.9em;padding:.7em .9em;background:rgba(0,0,0,.5);min-width:0;box-shadow:inset 0 0 1.2em color-mix(in srgb,var(--c) 18%,transparent)}
+.tile .un{margin-left:.3ch}
 .tile .k .nc{text-transform:none}
 .tile .vrow{display:flex;justify-content:space-between;align-items:baseline;gap:0 .3em;flex-wrap:nowrap;white-space:nowrap}.tile .vrow>:last-child{margin-left:auto}
 .tile .vrow.stack{flex-direction:column;align-items:flex-start;gap:.1em}
@@ -333,6 +334,8 @@ function cls(v){return v>0?"pos":v<0?"neg":""}
 function pad(n){return String(n).padStart(2,"0")}
 function toLocalInput(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes())}
 /* procenta se znakem % před číslem, ve stejném tvaru jako částka v $ (např. %38,26) */
+/* dlaždice Investice: jedno desetinné místo, úzká mezera a jednotka */
+function u1(v,j){if(!isFinite(v))return "—";return num(v,1)+'<span class="un">'+j+'</span>'}
 function pctPre(v){if(!isFinite(v))return "—";return (v<0?"−":"")+num(Math.abs(v),2)+"%"}
 function dmyShort(d){return d.getDate()+"."+(d.getMonth()+1)+"."+String(d.getFullYear()).slice(-2)}
 function dmy(d){return d.getDate()+"."+(d.getMonth()+1)+"."+d.getFullYear()}
@@ -540,7 +543,7 @@ function winPie(w,l){
   return '<svg class="pie" viewBox="0 0 100 100" role="img" aria-label="'+w+' ziskových a '+l+' ztrátových obchodů"><title>'+w+' ziskových · '+l+' ztrátových obchodů</title>'+g+'<circle cx="'+c+'" cy="'+c+'" r="'+R+'" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/></svg>';
 }
 function winTile(st){
-  return '<div class="tile wintile"><div class="wl"><div class="k">Winrate</div><div class="v"><span class="'+(st.wins>st.losses?"pos":st.wins<st.losses?"neg":"")+'">'+(isFinite(st.winrate)?num(st.winrate,1)+"%":"—")+'</span></div></div>'+winPie(st.wins,st.losses)+'</div>';
+  return '<div class="tile wintile"><div class="wl"><div class="k">Winrate</div><div class="v"><span class="'+(st.wins>st.losses?"pos":st.wins<st.losses?"neg":"")+'">'+u1(st.winrate,"%")+'</span></div></div>'+winPie(st.wins,st.losses)+'</div>';
 }
 function tile(k,v,s,wide){return '<div class="tile'+(wide?' wide':'')+'"><div class="k">'+k+'</div><div class="v">'+v+'</div>'+(s?'<div class="s">'+s+'</div>':'')+'</div>'}
 function seg(side,key,opts){return '<div class="seg" role="group">'+opts.map(function(o){return '<button data-side="'+side+'" data-k="'+key+'" data-v="'+o[0]+'" aria-pressed="'+(ui[side][key]===o[0])+'">'+o[1]+'</button>'}).join("")+'</div>'}
@@ -549,8 +552,8 @@ function viewInv(u,side,st){
   var mb=st.manualBal,sd=new Date(st.start);
   return '<div class="tiles big">'+
    tile("Vklad",'<span class="vrow" title="Vyhodnocuje se od uvedeného data"><span>'+num(Math.round(st.base),0)+' $</span><span>'+dmyShort(new Date(st.start))+'</span></span>')+
-   tile("Stav účtu",'<span class="'+cls(st.current-st.base)+'">'+usd(st.current)+'</span>',[st.wd?"výběry "+usd(st.wd):""].filter(Boolean).join(" · "))+
-   tile('Zisk <span class="nc">PnL</span>','<span class="vrow"><span class="'+cls(st.pnl)+'">'+usd(st.pnl)+'</span><span class="'+cls(st.pnl)+'">'+pctPre(st.base?st.pnl/st.base*100:NaN)+'</span></span>')+
+   tile("Stav účtu",'<span class="'+cls(st.current-st.base)+'">'+u1(st.current,"$")+'</span>',[st.wd?"výběry "+usd(st.wd):""].filter(Boolean).join(" · "))+
+   tile('Zisk <span class="nc">PnL</span>','<span class="vrow"><span class="'+cls(st.pnl)+'">'+u1(st.pnl,"$")+'</span><span class="'+cls(st.pnl)+'">'+u1(st.base?st.pnl/st.base*100:NaN,"%")+'</span></span>')+
    winTile(st)+
    (mb!=null?tile("Skutečný zůstatek (zadaný ručně)",usd(mb),"rozdíl proti výpočtu "+usd(mb-st.current,true),true):"")+
    '</div>';
