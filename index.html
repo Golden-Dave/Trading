@@ -616,7 +616,8 @@ function fitChartHeight(el){
   var target=parseFloat(getComputedStyle(ct).fontSize)*1.15*0.9,F=ppu>0?target/(17*ppu):1;F=F>1.05?Math.min(F,FMAX):1;
   if(Math.abs(F-(d.fsx||1))>0.01){d.fsx=F;el._key=null;
   }  /* vždy je vidět 7 období – písmo se tomu přizpůsobí (viz omezení F výše) */
-  if(ppu>0&&free>0)H=Math.max(CH.H,Math.min(520,Math.floor(free/ppu)));
+  /* graf se vejde do volného místa – nikdy nepřeteče (jinak stránka poskočí a objeví se posuvník) */
+  if(ppu>0&&free>0)H=Math.max(150,Math.min(520,Math.floor((free-1)/ppu)));
   if(H!==d.H){d.H=H;el._key=null;el.querySelectorAll("svg").forEach(function(v){var vb=v.getAttribute("viewBox").split(" ");vb[3]=H;v.setAttribute("viewBox",vb.join(" "))})}
 }
 function initCharts(){
