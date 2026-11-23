@@ -641,6 +641,12 @@ function viewObch(u,side,st){
   var best=pcts.length?Math.max.apply(null,pcts):NaN,worst=pcts.length?Math.min.apply(null,pcts):NaN;
   var bestB=b.find(function(x){return x.pct===best}),worstB=b.find(function(x){return x.pct===worst});
   var sumP=pcts.reduce(function(a,v){return a+v},0);
+  /* Otevřené pozice: z časů otevření a zavření obchodů se zjistí nejvyšší počet pozic otevřených současně
+     v každém období (dni, týdnu…); „aktuálně“ = probíhající období, „průměrně“ = průměr přes období s obchody. */
+  var ev=[];st.trades.forEach(function(t){if(!t.o)return;var a=new Date(t.o).getTime(),z=new Date(t.t).getTime();if(!(a<=z))return;ev.push([a,1],[z,-1])});
+  ev.sort(function(x,y){return x[0]-y[0]||x[1]-y[1]});
+  var lvl=0,pmax={};ev.forEach(function(e){lvl+=e[1];var k=periodStart(new Date(e[0]),per).getTime();if(e[1]>0||!(k in pmax))pmax[k]=Math.max(pmax[k]||0,lvl+(e[1]<0?1:0))});
+  var pk=Object.keys(pmax),opNow=ev.length?(pmax[curKey]||0):NaN,opAvg=pk.length?pk.reduce(function(a,k){return a+pmax[k]},0)/pk.length:NaN;
   var word={day:"den",week:"týden",month:"měsíc",year:"rok"}[per],cw={day:"dnes",week:"tento týden",month:"tento měsíc",year:"letos"}[per],
       tw={day:"obchodní den",week:"týden s obchody",month:"měsíc s obchody",year:"rok s obchody"}[per];
   return head+'<div class="tiles big six">'+
@@ -648,8 +654,8 @@ function viewObch(u,side,st){
    tile("Obchody průměrně",num(st.trades.length/calP,2))+
    tile("Návratnost aktuálně",'<span class="'+cls(cur?cur.pct:0)+'">'+pct(cur?cur.pct:0,true)+'</span>')+
    tile("Návratnost průměrně",'<span class="'+cls(pcts.length?sumP/pcts.length:0)+'">'+pct(pcts.length?sumP/pcts.length:NaN,true)+'</span>')+
-   tile("Maximální návratnost",'<span class="pos">'+pct(best>0?best:NaN,true)+'</span>')+
-   tile("Maximální ztráta",'<span class="neg">'+pct(worst<0?worst:NaN,true)+'</span>')+
+   tile("Otevřené pozice aktuálně",isFinite(opNow)?String(opNow):"—")+
+   tile("Otevřené pozice průměrně",isFinite(opAvg)?num(opAvg,2):"—")+
    '</div>';
 }
 function viewPrev(u,side,st){
