@@ -120,6 +120,11 @@ button.src{background:none;border:0;border-bottom:1px dashed currentColor;paddin
 .content:has(.tiles.six){display:flex;flex-direction:column}
 .tiles.big.six{flex:1;min-height:0;grid-auto-rows:1fr;gap:.6em;margin-top:.5em}
 .tiles.big.six .tile{min-height:0;padding:.55em 1em}
+.tiles.big.six.pairs{grid-template-columns:minmax(0,1fr);gap:.5em}
+.tiles.big.six .tile.pair{flex-direction:row;justify-content:space-between;align-items:center;gap:1em;padding:.35em 1.1em}
+.tile.pair .pc{display:flex;flex-direction:column;justify-content:center;min-width:0;white-space:nowrap}
+.tile.pair .pc .v{padding-left:.55em;line-height:1.15}
+.tile.pair .pc.r{text-align:right;align-items:flex-end}.tile.pair .pc.r .v{padding-left:0}
 .tiles.big .tile .k{font-size:.9em}
 .tiles.big .tile .v{font-size:1.65em}
 .tiles.big .tile .s{font-size:.95em}
@@ -647,17 +652,27 @@ function viewObch(u,side,st){
   ev.sort(function(x,y){return x[0]-y[0]||x[1]-y[1]});
   var lvl=0,pmax={};ev.forEach(function(e){lvl+=e[1];var k=periodStart(new Date(e[0]),per).getTime();if(e[1]>0||!(k in pmax))pmax[k]=Math.max(pmax[k]||0,lvl+(e[1]<0?1:0))});
   var pk=Object.keys(pmax),opNow=ev.length?(pmax[curKey]||0):NaN,opAvg=pk.length?pk.reduce(function(a,k){return a+pmax[k]},0)/pk.length:NaN;
-  var word={day:"den",week:"týden",month:"měsíc",year:"rok"}[per],cw={day:"dnes",week:"tento týden",month:"tento měsíc",year:"letos"}[per],
-      tw={day:"obchodní den",week:"týden s obchody",month:"měsíc s obchody",year:"rok s obchody"}[per];
-  return head+'<div class="tiles big six">'+
-   tile("Obchody aktuálně",String(cur?cur.n:0))+
-   tile("Obchody průměrně",num(st.trades.length/calP,2))+
-   tile("Návratnost aktuálně",'<span class="'+cls(cur?cur.pct:0)+'">'+pct(cur?cur.pct:0,true)+'</span>')+
-   tile("Návratnost průměrně",'<span class="'+cls(pcts.length?sumP/pcts.length:0)+'">'+pct(pcts.length?sumP/pcts.length:NaN,true)+'</span>')+
-   tile("Otevřené pozice aktuálně",isFinite(opNow)?String(opNow):"—")+
-   tile("Otevřené pozice průměrně",isFinite(opAvg)?num(opAvg,2):"—")+
+  /* Po obchodech: % obchodu (stejně jako v seznamu obchodů, i s koeficientem) a doba držení pozice */
+  var pm={};st.trades.forEach(function(t){var k=periodStart(new Date(t.t),per).getTime(),m=pm[k]||(pm[k]={hi:0,lo:0,ds:0,dn:0});
+    var pv=isFinite(t.pct)?t.pct*(t.f==null?1:t.f):(st.base>0?t.adj/st.base*100:NaN);
+    if(isFinite(pv)){m.hi=Math.max(m.hi,pv);m.lo=Math.min(m.lo,pv)}
+    if(t.o){var du=new Date(t.t)-new Date(t.o);if(du>=0){m.ds+=du;m.dn++}}});
+  var mk=Object.keys(pm),cm=pm[curKey]||{hi:0,lo:0,ds:0,dn:0},avgOf=function(f){return mk.length?mk.reduce(function(a,k){return a+f(pm[k])},0)/mk.length:NaN};
+  var dS=mk.reduce(function(a,k){return a+pm[k].ds},0),dN=mk.reduce(function(a,k){return a+pm[k].dn},0);
+  var hiAvg=avgOf(function(m){return m.hi}),loAvg=avgOf(function(m){return m.lo});
+  var sp=function(v){return '<span class="'+cls(v)+'">'+pct(v,true)+'</span>'};
+  return head+'<div class="tiles big six pairs">'+
+   pairTile("Obchody",String(cur?cur.n:0),num(st.trades.length/calP,2))+
+   pairTile("Návratnost",sp(cur?cur.pct:0),sp(pcts.length?sumP/pcts.length:NaN))+
+   pairTile("Počet pozic",isFinite(opNow)?String(opNow):"—",isFinite(opAvg)?num(opAvg,2):"—")+
+   pairTile("Čas pozic",cm.dn?durTxt(cm.ds/cm.dn):"—",dN?durTxt(dS/dN):"—")+
+   pairTile("Max. zisk",sp(cm.hi),sp(hiAvg))+
+   pairTile("Max. ztráta",sp(cm.lo),sp(loAvg))+
    '</div>';
 }
+/* dlaždice Statistiky: vlevo hodnota za probíhající období, vpravo průměr */
+function pairTile(k,a,b){return '<div class="tile pair"><div class="pc"><div class="k">'+k+'</div><div class="v">'+a+'</div></div><div class="pc r"><div class="k">Průměrně</div><div class="v">'+b+'</div></div></div>'}
+function durTxt(ms){var m=Math.round(ms/60000);if(m<60)return m+" min";var h=Math.floor(m/60);m%=60;if(h<24)return h+" h"+(m?" "+m+" min":"");var d=Math.floor(h/24);h%=24;return d+" d"+(h?" "+h+" h":"")}
 function viewPrev(u,side,st){
   var T=u.transfer,cap=+u.settings.capital||0,rp=+T.robotPct,mp=100-rp,list=(T.withdrawals||[]).slice(-5).reverse();
   return '<form class="prevf" data-side="'+side+'" novalidate>'+
