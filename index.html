@@ -73,6 +73,8 @@ button.titleimg{border:0;padding:0;cursor:pointer}
 .shead{left:calc(var(--u)*62)!important;right:calc(var(--u)*62)!important;justify-content:flex-end}
 .shead h2{position:absolute;left:0;right:0;text-align:center;padding:0 4.2em;pointer-events:none}
 .shead h2{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(14px,calc(var(--u)*30),30px);color:#fff;text-shadow:0 0 10px var(--c),0 0 2px var(--hi);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shead h2 .htl{pointer-events:auto;background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-shadow:inherit;letter-spacing:inherit;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.shead h2 .htl:hover{color:var(--hi)}
 .src{font-size:clamp(11px,calc(var(--u)*17),15px);color:var(--hi);text-decoration:none;border-bottom:1px dashed currentColor;white-space:nowrap}
 .src:hover{color:#fff}
 button.src{background:none;border:0;border-bottom:1px dashed currentColor;padding:0;cursor:pointer;font:inherit;font-size:clamp(11px,calc(var(--u)*17),15px)}
@@ -517,7 +519,9 @@ function stand(u,side){
   var st=stats(u,side),s=ui[side],url=side==="robot"?u.settings.robotUrl:u.settings.manualUrl;
   var tabs=[["inv","Investice"],["graf","Graf"],["obch","Statistika"],["prev","Převod"]];
   var body={inv:viewInv,graf:viewGraf,obch:viewObch,prev:viewPrev}[s.tab](u,side,st);
-  var head='<h2>'+(side==="robot"?"Robotické obchody":"Manuální obchody")+'</h2>'+((/^https?:\/\//i.test(url)||st.trades.length)?'<button type="button" class="src" data-a="list" data-side="'+side+'">Zdroj</button>':'');
+  var ttl=side==="robot"?"Robotické obchody":"Manuální obchody";
+  /* klepnutím na nadpis stojánku se otevře seznam obchodů (zdroj dat) */
+  var head='<h2>'+((/^https?:\/\//i.test(url)||st.trades.length)?'<button type="button" class="htl" data-a="list" data-side="'+side+'">'+ttl+'</button>':ttl)+'</h2>';
   var btns='<div class="btns">'+tabs.map(function(t,i){return '<button class="hot h'+i+'" data-side="'+side+'" data-tab="'+t[0]+'" aria-pressed="'+(s.tab===t[0])+'" aria-label="'+t[1]+'"><span class="ring"></span></button>'}).join("")+'</div>';
   return shell(side,head,body,btns);
 }
