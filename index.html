@@ -122,9 +122,9 @@ button.src{background:none;border:0;border-bottom:1px dashed currentColor;paddin
 .content:has(.tiles.six){display:flex;flex-direction:column}
 .tiles.big.six{flex:1;min-height:0;grid-auto-rows:1fr;gap:.6em;margin-top:.5em}
 .tiles.big.six .tile{min-height:0;padding:.55em 1em}
-.tiles.big.six.pairs{grid-template-columns:minmax(0,1fr);gap:.5em}
-.tiles.big.six .tile.pair{flex-direction:row;justify-content:space-between;align-items:center;gap:1em;padding:.35em 1.1em}
-.tile.pair .pc{display:flex;flex-direction:column;justify-content:center;min-width:0;white-space:nowrap}
+.tiles.big.six.pairs{grid-template-columns:repeat(2,minmax(0,1fr));gap:.6em}
+.tiles.big.six .tile.pair{flex-direction:row;justify-content:space-between;align-items:center;gap:.8em;padding:.35em .9em;overflow:hidden}
+.tile.pair .pc{display:flex;flex-direction:column;justify-content:center;flex-shrink:0;white-space:nowrap}
 .tile.pair .pc .v{padding-left:.55em;line-height:1.15}
 .tile.pair .pc.r{text-align:right;align-items:flex-end}.tile.pair .pc.r .v{padding-left:0}
 .tiles.big .tile .k{font-size:.9em}
@@ -722,7 +722,10 @@ function fitPies(){document.querySelectorAll(".wintile").forEach(function(t){var
     if(v&&wl.offsetWidth>inner)v.style.fontSize=(Math.floor(inner/wl.offsetWidth*100)/100*parseFloat(getComputedStyle(v).fontSize))+"px"}}})}
 /* Dvě hodnoty v dlaždici (Vklad, Zisk PnL) jsou na jednom řádku; když se nevejdou, dají se pod sebe ve stejné
    velikosti písma. Zmenší se jen hodnota, která se nevejde ani sama na řádek. */
-function fitRows(){fitPies();document.querySelectorAll(".tile .vrow").forEach(function(r){r.style.fontSize="";r.classList.remove("stack");
+function fitRows(){fitPies();/* Statistika: když se obsah dlaždice nevejde, zmenší se písmo – stejně ve všech dlaždicích */
+  var pt=document.querySelectorAll(".tile.pair"),r=1;pt.forEach(function(t){t.style.fontSize=""});
+  pt.forEach(function(t){var w=t.clientWidth,need=t.scrollWidth;if(w&&need>w+1)r=Math.min(r,w/need)});
+  if(r<1)pt.forEach(function(t){t.style.fontSize=(Math.floor(r*115*100)/10000)+"em"});document.querySelectorAll(".tile .vrow").forEach(function(r){r.style.fontSize="";r.classList.remove("stack");
   var w=r.clientWidth;if(!w||r.scrollWidth<=w+1)return;
   r.classList.add("stack");var need=0;[].forEach.call(r.children,function(c){need=Math.max(need,c.scrollWidth)});
   if(need>w+1)r.style.fontSize=(Math.floor(w/need*100)/100)+"em"})}
