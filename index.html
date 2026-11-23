@@ -548,7 +548,7 @@ function seg(side,key,opts){return '<div class="seg" role="group">'+opts.map(fun
 function viewInv(u,side,st){
   var mb=st.manualBal,sd=new Date(st.start);
   return '<div class="tiles big">'+
-   tile("Vklad",'<span class="vrow" title="Vyhodnocuje se od uvedeného data"><span>'+usd(st.base)+'</span><span>'+dmyShort(new Date(st.start))+'</span></span>')+
+   tile("Vklad",'<span class="vrow" title="Vyhodnocuje se od uvedeného data"><span>'+num(Math.round(st.base),0)+' $</span><span>'+dmyShort(new Date(st.start))+'</span></span>')+
    tile("Stav účtu",'<span class="'+cls(st.current-st.base)+'">'+usd(st.current)+'</span>',[st.wd?"výběry "+usd(st.wd):""].filter(Boolean).join(" · "))+
    tile('Zisk <span class="nc">PnL</span>','<span class="vrow"><span class="'+cls(st.pnl)+'">'+usd(st.pnl)+'</span><span class="'+cls(st.pnl)+'">'+pctPre(st.base?st.pnl/st.base*100:NaN)+'</span></span>')+
    winTile(st)+
