@@ -680,7 +680,7 @@ function viewObch(u,side,st){
    '</div>';
 }
 /* dlaždice Statistiky: vlevo hodnota za probíhající období, vpravo průměr */
-function pairTile(k,a,b){return '<div class="tile pair"><div class="pc"><div class="k">'+k+'</div><div class="v">'+a+'</div></div><div class="pc r"><div class="k">Průměrně</div><div class="v">'+b+'</div></div></div>'}
+function pairTile(k,a,b){return '<div class="tile pair"><div class="pc"><div class="k">'+k+'</div><div class="v">'+a+'</div></div><div class="pc r"><div class="k">Průměr</div><div class="v">'+b+'</div></div></div>'}
 function durTxt(ms){var U=function(n,j){return n+'<span class="un">'+j+'</span>'};var m=Math.round(ms/60000);if(m<60)return U(m,"min");var h=Math.floor(m/60);m%=60;if(h<24)return U(h,"h")+(m?" "+U(m,"min"):"");var d=Math.floor(h/24);h%=24;return U(d,"d")+(h?" "+U(h,"h"):"")}
 function viewPrev(u,side,st){
   var T=u.transfer,cap=+u.settings.capital||0,rp=+T.robotPct,mp=100-rp,list=(T.withdrawals||[]).slice(-5).reverse();
