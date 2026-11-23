@@ -148,8 +148,9 @@ button.src{background:none;border:0;border-bottom:1px dashed currentColor;paddin
 .pos{color:var(--win)} .neg{color:var(--loss)}
 .note{font-size:.8em;color:var(--sub);line-height:1.5;margin:.7em .1em 0}
 .seg{display:inline-flex;border:1px solid color-mix(in srgb,var(--hi) 50%,transparent);border-radius:999px;padding:.18em;gap:.1em;flex-wrap:wrap;background:rgba(0,0,0,.3)}
-.seg button{border:0;background:none;padding:.3em .8em;border-radius:999px;font-size:.82em;font-weight:700;color:var(--muted)}
+.seg button{border:0;background:none;padding:.32em .85em;border-radius:999px;font-size:.98em;font-weight:700;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--c);color:#fff;box-shadow:0 0 .7em var(--c)}
+@media (max-width:520px){.seg button{font-size:.9em;padding:.3em .62em}}
 .ctrls{display:flex;gap:.6em;flex-wrap:wrap;justify-content:space-between;margin-bottom:.5em}
 .chart{width:100%;display:flex;align-items:flex-start}
 .chart svg{display:block;height:auto}
