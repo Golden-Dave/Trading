@@ -665,7 +665,7 @@ function viewObch(u,side,st){
    pairTile("Obchody",String(cur?cur.n:0),num(st.trades.length/calP,2))+
    pairTile("Návratnost",sp(cur?cur.pct:0),sp(pcts.length?sumP/pcts.length:NaN))+
    pairTile("Počet pozic",isFinite(opNow)?String(opNow):"—",isFinite(opAvg)?num(opAvg,2):"—")+
-   pairTile("Čas pozic",cm.dn?durTxt(cm.ds/cm.dn):"—",dN?durTxt(dS/dN):"—")+
+   pairTile("Čas pozice",cm.dn?durTxt(cm.ds/cm.dn):"—",dN?durTxt(dS/dN):"—")+
    pairTile("Max. zisk",sp(cm.hi),sp(hiAvg))+
    pairTile("Max. ztráta",sp(cm.lo),sp(loAvg))+
    '</div>';
