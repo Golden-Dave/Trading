@@ -515,7 +515,6 @@ function renderStand(side){
   var y=window.scrollY,tmp=document.createElement("div");tmp.innerHTML=stand(viewed(),side);
   /* na telefonu (stojánky pod sebou) se stojánek při přepnutí záložky nezmenší – jinak by se stránka posunula */
   var oldH=el.getBoundingClientRect().height,nw=tmp.firstElementChild;el.replaceWith(nw);
-  if(innerWidth<760){var f=nw.querySelector(".frame");if(f&&nw.getBoundingClientRect().height<oldH)f.style.minHeight=Math.ceil(oldH)+"px"}
   placeAllMix();
   if(window.scrollY!==y)window.scrollTo(0,y);
 }
@@ -731,7 +730,21 @@ function fitRows(){fitPies();/* Statistika: když se obsah dlaždice nevejde, zm
   var w=r.clientWidth;if(!w||r.scrollWidth<=w+1)return;
   r.classList.add("stack");var need=0;[].forEach.call(r.children,function(c){need=Math.max(need,c.scrollWidth)});
   if(need>w+1)r.style.fontSize=(Math.floor(w/need*100)/100)+"em"})}
-function placeAllMix(){fitRows();document.querySelectorAll("input.mix").forEach(placeMix);initCharts()}
+/* Telefon: výška stojánku je stejná pro všechny záložky – vezme se nejvyšší z nich (změří se skrytě),
+   takže se při přepínání Investice/Graf/Statistika/Převod rámeček nehýbe. */
+function lockStands(){
+  document.querySelectorAll(".stand").forEach(function(el){
+    var f=el.querySelector(".frame");if(!f)return;f.style.minHeight="";
+    if(innerWidth>=760)return;
+    var side=el.classList.contains("robot")?"robot":"manual",u=viewed();if(!u)return;
+    var keep=ui[side].tab,box=document.createElement("div"),mx=0;
+    box.style.cssText="position:absolute;left:0;top:0;visibility:hidden;pointer-events:none;width:"+el.getBoundingClientRect().width+"px";
+    el.parentNode.appendChild(box);
+    ["inv","graf","obch","prev"].forEach(function(t){ui[side].tab=t;box.innerHTML=stand(u,side);var fr=box.querySelector(".frame");if(fr)mx=Math.max(mx,fr.getBoundingClientRect().height)});
+    ui[side].tab=keep;box.remove();
+    if(mx>0)f.style.minHeight=Math.ceil(mx)+"px"});
+}
+function placeAllMix(){lockStands();fitRows();document.querySelectorAll("input.mix").forEach(placeMix);initCharts()}
 window.addEventListener("resize",placeAllMix);
 function slHint(T,cap){
   if(T.slUnit!=="%")return "";
