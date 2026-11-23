@@ -594,7 +594,8 @@ function paintChart(el){
   ax+='<text x="10" y="'+18*F+'" font-family="Nunito,sans-serif" font-size="'+18*F+'" font-weight="700" fill="'+axisCol+'">'+{pct:"%",pips:"pips",lot:"lot",usd:"$"}[unit]+'</text>';
   for(var i=Math.max(0,i0-1);i<=Math.min(n-1,i1+1);i++){var x=b[i],val=Math.max(lo,Math.min(hi,vals[i])),cx=slot*(i+.5),y0=y(0),y1=y(val),top=Math.min(y0,y1),hgt=Math.max(Math.abs(y1-y0),1.5);
     var sv=unit==="lot"?(isFinite(x.profit)?x.profit:isFinite(x.pct)?x.pct:x.pips):vals[i],col=sv>=0?"#2fe28c":"#ff4d61",vv=vals[i];
-    var lab=unit==="pct"?pct(vv,true):unit==="pips"?(vv>0?"+":"")+num(vv,0)+" pips":unit==="lot"?num(vv,2)+" lot":usd(x.profit,true).replace(",00","");
+    /* popisek sloupce: jen číslo, jednotka je u osy vlevo nahoře */
+    var sg=function(v){return v>0?"+":""},lab=unit==="pct"?(isFinite(vv)?sg(vv)+num(vv,2):"—"):unit==="pips"?sg(vv)+num(vv,0):unit==="lot"?num(vv,2):sg(x.profit)+num(x.profit,2).replace(/,00$/,"");
     g+='<rect x="'+(cx-bw/2)+'" y="'+top+'" width="'+bw+'" height="'+hgt+'" rx="4" fill="'+col+'" fill-opacity=".85" style="filter:drop-shadow(0 0 6px '+col+')"/>';
     g+='<text x="'+cx+'" y="'+(vv>=0?top-7*F:top+hgt+15*F)+'" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="'+(n>7?17:19)*F+'" font-weight="600" fill="'+col+'">'+lab+'</text>';
     var lastLab=false;
