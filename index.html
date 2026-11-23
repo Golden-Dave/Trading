@@ -669,11 +669,11 @@ function viewObch(u,side,st){
   var mk=Object.keys(pm),cm=pm[curKey]||{hi:0,lo:0,ds:0,dn:0},avgOf=function(f){return mk.length?mk.reduce(function(a,k){return a+f(pm[k])},0)/mk.length:NaN};
   var dS=mk.reduce(function(a,k){return a+pm[k].ds},0),dN=mk.reduce(function(a,k){return a+pm[k].dn},0);
   var hiAvg=avgOf(function(m){return m.hi}),loAvg=avgOf(function(m){return m.lo});
-  var sp=function(v){return '<span class="'+cls(v)+'">'+pct(v,true)+'</span>'};
+  var sp=function(v){return '<span class="'+cls(v)+'">'+u1(v,"%")+'</span>'};
   return head+'<div class="tiles big six pairs">'+
-   pairTile("Obchody",String(cur?cur.n:0),num(st.trades.length/calP,2))+
+   pairTile("Obchody",String(cur?cur.n:0),num(st.trades.length/calP,1))+
    pairTile("Návratnost",sp(cur?cur.pct:0),sp(pcts.length?sumP/pcts.length:NaN))+
-   pairTile("Počet pozic",isFinite(opNow)?String(opNow):"—",isFinite(opAvg)?num(opAvg,2):"—")+
+   pairTile("Počet pozic",isFinite(opNow)?String(opNow):"—",isFinite(opAvg)?num(opAvg,1):"—")+
    pairTile("Čas pozice",cm.dn?durTxt(cm.ds/cm.dn):"—",dN?durTxt(dS/dN):"—")+
    pairTile("Max. zisk",sp(cm.hi),sp(hiAvg))+
    pairTile("Max. ztráta",sp(cm.lo),sp(loAvg))+
