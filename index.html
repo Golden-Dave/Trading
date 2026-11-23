@@ -767,7 +767,7 @@ function renderList(){
   if(!tlEl){tlEl=document.createElement("div");tlEl.className="tl";document.body.appendChild(tlEl);
     tlEl.addEventListener("click",function(e){if(e.target===tlEl||e.target.closest("[data-tl=close]"))return closeList();if(e.target.closest("[data-tl=more]")){tlState.n+=500;renderList()}});
     document.addEventListener("keydown",tlKey)}
-  tlEl.innerHTML='<div class="tlbox '+side+'" role="dialog" aria-modal="true" aria-label="Výpis obchodů"><div class="tlhead"><h3>Výpis obchodů – '+(side==="robot"?"robotické":"manuální")+' obchodování</h3><button type="button" class="tlx" data-tl="close" aria-label="Zavřít">×</button></div>'+
+  tlEl.innerHTML='<div class="tlbox '+side+'" role="dialog" aria-modal="true" aria-label="Výpis obchodů"><div class="tlhead"><h3>Výpis '+(side==="robot"?"robotického":"manuálního")+' obchodování</h3><button type="button" class="tlx" data-tl="close" aria-label="Zavřít">×</button></div>'+
    '<div class="tlsum"><span>Obchodů <b>'+list.length+'</b></span><span>Ziskových <b>'+st.wins+'</b></span><span>Ztrátových <b>'+st.losses+'</b></span><span>PnL <b class="'+cls(st.pnl)+'">'+usd(st.pnl,true)+'</b></span><span>Od <b>'+dmy(sd)+'</b></span></div>'+
    (list.length?'<div class="tlscroll"><table class="tlt"><thead><tr><th>Otevřeno</th><th>Zavřeno</th><th>Směr</th><th>%</th><th>Loty</th><th>Pipy</th><th>Zisk</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="tlscroll"><div class="empty">Od nastaveného data zatím nejsou žádné obchody.</div></div>')+
    '<div class="tlfoot"><span>'+(shown.length<list.length?'Zobrazeno '+shown.length+' z '+list.length+'.':'')+'</span>'+
