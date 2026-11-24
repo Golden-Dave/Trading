@@ -247,6 +247,7 @@ div.f{display:flex;flex-direction:column;gap:.3em;font-size:.82em;color:var(--mu
 .act.mini{padding:3px 10px;font-size:12px;border-radius:8px}
 .chgbox{border:1px solid var(--gold);border-radius:12px;padding:10px 14px;margin:10px 0;background:rgba(255,210,60,.08)}
 .chgbox h4{margin:0 0 6px;color:var(--gold)}
+.gapbox a{color:var(--gold);font-weight:700}
 .chgrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:4px 0;font-size:13.5px}
 .chg{color:var(--gold);font-size:.8em}
 .admin h4.sec{grid-column:1/-1;margin:10px 0 0;font-size:16px}
@@ -864,6 +865,19 @@ function acctLine(m){return '<span class="who">Přihlášen: <b>'+esc(m.username
 function newChange(u){var c=u.transfer&&u.transfer.lastChange;return !!(c&&c.t&&u.transfer.changeAck!==c.t)}
 function changeText(u){var c=u.transfer.lastChange,d=new Date(c.t);
   return '<b>'+esc(u.username)+'</b> změnil '+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+' nastavení převodu: rozdělení robot '+c.robotPct+' % / manuál '+(100-c.robotPct)+' %, Stop loss robot '+esc(c.slRobot||"0")+' %, manuál '+esc(c.slManual||"0")+' %.'}
+/* Mezery v manuálních obchodech: stahování na GitHubu porovná denní součty lotů s účtem na Myfxbooku a dny,
+   kde v souboru obchody chybí, zapíše do data/manual-gaps.json. Správce je uvidí tady. */
+var gapInfo=null;
+async function loadGaps(){
+  if(DEMO)return;var m=me();if(!m||!m.isAdmin)return;
+  var u=/\.csv(\?|$)/i.test(m.settings.manualUrl||"")?m.settings.manualUrl.replace(/\.csv(\?|$)/i,"-gaps.json$1"):DEF_URL.manual.replace(/\.csv$/,"-gaps.json");
+  try{var r=await fetch(u+(u.indexOf("?")<0?"?":"&")+"t="+Date.now(),{cache:"no-store"});gapInfo=r.ok?await r.json():null}catch(e){gapInfo=null}
+  if(adminOpen)renderAdmin();
+}
+function gapsHTML(){if(!gapInfo||!gapInfo.gaps||!gapInfo.gaps.length)return "";
+  return '<div class="chgbox gapbox"><h4>Chybějící manuální obchody</h4><p class="hint">V datech chybí obchody za '+(gapInfo.gaps.length>1?'dny':'den')+' <b>'+gapInfo.gaps.map(function(d){var x=d.split("-");return +x[2]+". "+(+x[1])+". "+x[0]}).join(", ")+
+  '</b> (Myfxbook při automatickém stahování vrací jen posledních cca 40 obchodů). Doplníš je tak, že na Myfxbooku stáhneš výpis účtu '+esc(gapInfo.account||"")+' jako CSV a nahraješ ho '+
+  '<a href="https://github.com/Golden-Dave/Trading/upload/main/imports" target="_blank" rel="noopener">do složky imports na GitHubu</a> (Commit changes). Obchody se doplní do pár minut a automatické stahování běží dál.</p></div>'}
 function changesHTML(){var l=DB.users.filter(newChange);if(!l.length)return "";
   return '<div class="chgbox"><h4>Změny nastavení</h4>'+l.map(function(u){return '<div class="chgrow"><span>'+changeText(u)+'</span><button class="chip" data-x="ack" data-id="'+u.id+'">Beru na vědomí</button></div>'}).join("")+'</div>'}
 function renderAcct(){
@@ -971,7 +985,7 @@ function renderAdmin(){
   var m=me();if(!m||!m.isAdmin){closeOv();return}
   var sel=DB.users.find(function(u){return u.id===adminSel})||m;adminSel=sel.id;var S=sel.settings;
   ov.innerHTML='<div class="admin" role="dialog" aria-label="Správa účtů"><div class="row" style="justify-content:space-between"><h3>Správa účtů</h3><div class="row">'+acctLine(m)+'<button class="chip" data-x="pw">Změnit heslo</button><button class="chip" data-x="logout">Odhlásit</button><button class="chip" data-x="close">Zavřít</button></div></div>'+
-   changesHTML()+
+   gapsHTML()+changesHTML()+
    '<div class="agrid"><div><div class="ulist">'+DB.users.map(function(u){return '<button class="ubtn" data-x="sel" data-id="'+u.id+'" aria-current="'+(u.id===sel.id)+'"><b>'+esc(u.username)+(newChange(u)?' <span class="chg" title="Změnil nastavení převodu">●</span>':'')+'</b><small>'+(u.isAdmin?"správce · ":"")+(u.trades.robot.length+u.trades.manual.length)+' obchodů</small></button>'}).join("")+'</div>'+
    '<h4>Nový účet</h4><form id="fNew" class="ulist"><label class="f">Uživatelské jméno<input type="text" id="nU" autocomplete="off" required></label><label class="f">Heslo (min. 6 znaků)<input type="password" id="nP" autocomplete="new-password" minlength="6" required></label><button class="act">Založit účet</button></form>'+
    '<h4>Záloha dat</h4><div class="ulist"><button class="act ghost" data-x="export">Kopírovat zálohu</button><textarea id="bk" placeholder="Sem vložte zálohu pro obnovení"></textarea><button class="act ghost" data-x="import">Obnovit ze zálohy</button><p class="hint">Obnova přiřadí data podle uživatelského jména. Účty musí být založené předem.</p></div></div>'+
@@ -1100,6 +1114,7 @@ async function autoRefresh(){
       u.trades[side]=t;changed=true;
     }}
   if(any)stampUpd();
+  loadGaps();
   if(changed&&session){renderMain();if(adminOpen)renderAdmin()}
 }
 function scheduleHourly(){

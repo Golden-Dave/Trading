@@ -117,9 +117,15 @@ def main(acc='12329555', target=None):
             if abs(have.get(d, 0) - float(y.get('lots') or 0)) > 0.005:
                 gaps.append(f'{d} (v souboru {have.get(d, 0):.2f} lotu, na účtu {float(y.get("lots") or 0):.2f})')
     if gaps:
-        print('::warning::V souboru chybí obchody za dny: ' + '; '.join(gaps) + '. Doplní je aktualizace přes výpis v prohlížeči.')
+        print('::warning::V souboru chybí obchody za dny: ' + '; '.join(gaps) + '. Doplní je výpis CSV nahraný do složky imports/.')
     else:
         print('Kontrola úplnosti v pořádku – denní součty lotů souhlasí s účtem.')
+    # záznam pro aplikaci: Správa účtů ukáže správci dny, kde v souboru chybí obchody
+    # (bez času kontroly, aby se soubor měnil jen při změně mezer)
+    gfile = target[:-4] + '-gaps.json'
+    with open(gfile, 'w', encoding='utf-8') as f:
+        json.dump({'account': str(acc), 'gaps': [g.split(' ')[0] for g in gaps]}, f)
+        f.write('\n')
 
 
 if __name__ == '__main__':

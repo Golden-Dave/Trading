@@ -1,13 +1,14 @@
 name: Aktualizace obchodů – manuál (API)
-# Každou hodinu stáhne nové obchody manuálního účtu přes oficiální API Myfxbooku a uloží je do data/.
-# Spouští se ve :43, aby byla data hotová před celou hodinou, kdy si je aplikace načítá
-# (GitHub naplánované běhy obvykle o několik minut zpozdí).
+# Každých 15 minut stáhne nové obchody manuálního účtu přes oficiální API Myfxbooku a uloží je do data/.
+# API vrací jen posledních cca 40 obchodů, proto častěji. Běh ve :43 je hotový před celou hodinou,
+# kdy si data načítá aplikace (GitHub naplánované běhy obvykle o několik minut zpozdí).
+# Výpis CSV z Myfxbooku nahraný do složky imports/ se při nahrání sloučí do data/manual.csv a smaže.
 on:
   schedule:
-    - cron: "43 * * * *"
+    - cron: "13,28,43,58 * * * *"
   workflow_dispatch:
   push:
-    paths: [".github/workflows/update-manual.yml", "tools/api_update.py"]
+    paths: [".github/workflows/update-manual.yml", "tools/api_update.py", "imports/**"]
 permissions:
   contents: write
 concurrency:
@@ -19,6 +20,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Doplnit obchody z nahraného výpisu
+        run: |
+          shopt -s nullglob nocaseglob
+          f=(imports/*.csv)
+          if [ ${#f[@]} -eq 0 ]; then echo "Žádný výpis k doplnění."; exit 0; fi
+          python3 tools/import_statement.py "${f[@]}" --target data/manual.csv || echo "::warning::Nahraný výpis se nepodařilo zpracovat (čeká se CSV export výpisu z Myfxbooku). Soubor se odstraní."
+          git rm -q --cached "${f[@]}"; rm -f "${f[@]}"
       - name: Stáhnout obchody a křivku růstu
         env:
           MYFXBOOK_EMAIL: ${{ secrets.MYFXBOOK_EMAIL }}
@@ -26,7 +34,7 @@ jobs:
         run: python3 tools/api_update.py 12329555 data/manual.csv
       - name: Uložit změny
         run: |
-          git add data/manual.csv data/manual-growth.csv
+          git add data/manual.csv data/manual-growth.csv data/manual-gaps.json
           if git diff --cached --quiet; then echo "Žádné nové obchody."; exit 0; fi
           git -c user.name="GitHub Actions" -c user.email="actions@github.com" commit -m "Aktualizace obchodů (manuál, API)"
           for i in 1 2 3; do
