@@ -43,6 +43,9 @@ button{cursor:pointer}
 .titleimg{display:block;width:min(92%,560px);aspect-ratio:1130/262;margin:0 auto -4px;background:var(--img-title) center/100% 100% no-repeat;
   -webkit-mask-image:radial-gradient(ellipse 62% 75% at 50% 45%,#000 62%,transparent 100%);mask-image:radial-gradient(ellipse 62% 75% at 50% 45%,#000 62%,transparent 100%)}
 button.titleimg{border:0;padding:0;cursor:pointer}
+.titleimg{position:relative}
+.titleimg.alert{isolation:isolate}
+.titleimg.alert::after{content:"";position:absolute;inset:0;pointer-events:none;background:#ff2a2a;mix-blend-mode:multiply;-webkit-mask:var(--img-title) center/100% 100% no-repeat;mask:var(--img-title) center/100% 100% no-repeat luminance}
 .titleimg span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .stands{display:grid;grid-template-columns:1fr;gap:6px}
 @media (min-width:760px){
@@ -464,7 +467,11 @@ function render(){
   if(!session)return needSetup?renderSetup():renderLogin();
   renderMain();
 }
-function sceneHTML(a,b){return '<div class="scene"><button type="button" class="titleimg" data-a="menu" aria-label="XAU/USD – účet a nastavení" title="Účet a nastavení"></button><div class="stands">'+a+b+'</div></div>'}
+/* Nápis XAU/USD zčervená, když má správce ve Správě účtů důležitou zprávu (chybějící obchody od aplikace
+   nebo změnu nastavení od jiného uživatele). */
+function hasAlert(){var m=me();return !!(m&&m.isAdmin&&((gapInfo&&gapInfo.gaps&&gapInfo.gaps.length)||DB.users.some(newChange)))}
+function setAlert(){var t=document.querySelector(".scene:not(.authscene) .titleimg");if(t)t.classList.toggle("alert",hasAlert())}
+function sceneHTML(a,b){return '<div class="scene"><button type="button" class="titleimg'+(hasAlert()?' alert':'')+'" data-a="menu" aria-label="XAU/USD – účet a nastavení" title="Účet a nastavení"></button><div class="stands">'+a+b+'</div></div>'}
 function shell(side,head,body,btns){return '<section class="stand '+side+'" aria-label="'+(side==="robot"?"Robotické":"Manuální")+' obchody"><div class="frame"><div class="shead">'+head+'</div><div class="content">'+body+'</div>'+(btns||'')+'</div></section>'}
 /* úvodní obrazovka (přihlášení, založení správce, hlášky): jen nadpis XAU/USD a jedno okno */
 function authScene(inner,after){return '<div class="scene authscene"><div class="titleimg" role="img" aria-label="XAU/USD"></div>'+(after?'<div class="authrow">':'')+'<section class="authcard" aria-label="Přihlášení">'+inner+'</section>'+(after?after+'</div>':'')+'</div>'}
@@ -872,7 +879,7 @@ async function loadGaps(){
   if(DEMO)return;var m=me();if(!m||!m.isAdmin)return;
   var u=/\.csv(\?|$)/i.test(m.settings.manualUrl||"")?m.settings.manualUrl.replace(/\.csv(\?|$)/i,"-gaps.json$1"):DEF_URL.manual.replace(/\.csv$/,"-gaps.json");
   try{var r=await fetch(u+(u.indexOf("?")<0?"?":"&")+"t="+Date.now(),{cache:"no-store"});gapInfo=r.ok?await r.json():null}catch(e){gapInfo=null}
-  if(adminOpen)renderAdmin();
+  if(adminOpen)renderAdmin();setAlert();
 }
 function gapsHTML(){if(!gapInfo||!gapInfo.gaps||!gapInfo.gaps.length)return "";
   return '<div class="chgbox gapbox"><h4>Chybějící manuální obchody</h4><p class="hint">V datech chybí obchody za '+(gapInfo.gaps.length>1?'dny':'den')+' <b>'+gapInfo.gaps.map(function(d){var x=d.split("-");return +x[2]+". "+(+x[1])+". "+x[0]}).join(", ")+
@@ -1031,7 +1038,7 @@ async function adminClick(e){
   if(x==="pw"){adminOpen=false;return renderPw()}
   if(x==="logout")return logout();
   if(x==="sel"){adminSel=b.dataset.id;return renderAdmin()}
-  if(x==="ack"){var au=DB.users.find(function(u){return u.id===b.dataset.id});if(au&&au.transfer.lastChange){au.transfer.changeAck=au.transfer.lastChange.t;persistTransfer(au)}return renderAdmin()}
+  if(x==="ack"){var au=DB.users.find(function(u){return u.id===b.dataset.id});if(au&&au.transfer.lastChange){au.transfer.changeAck=au.transfer.lastChange.t;persistTransfer(au)}renderAdmin();return setAlert()}
   if(x==="view"){viewId=sel.id===me().id?null:sel.id;return closeOv()}
   if(x==="del")return arm(b,"del","Opravdu smazat "+sel.username+"?",async function(){
     try{await userRef(sel.id).collection("trades").doc("robot").delete();await userRef(sel.id).collection("trades").doc("manual").delete();await userRef(sel.id).delete()}catch(err){return fail(err)}
