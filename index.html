@@ -224,7 +224,7 @@ input.mix:focus-visible::-webkit-slider-thumb{outline:2px solid var(--gold);outl
 .about{box-sizing:border-box;width:min(440px,92vw);padding:4px 6px 0;color:var(--muted);font-size:15px;line-height:1.55}
 .authrow{display:flex;flex-direction:column;align-items:center;gap:clamp(12px,4vh,40px)}
 @media (min-width:900px){.authrow{flex-direction:row;align-items:center;gap:40px}.authrow .about{padding:0}}
-.about p{margin:0 0 .6em}
+.about p{margin:0 0 1.2em}
 .about ul{margin:0 0 .6em;padding-left:1.2em}
 .about li{margin:.25em 0}
 .ab-blue{color:var(--blue-hi)}
@@ -459,7 +459,10 @@ function shell(side,head,body,btns){return '<section class="stand '+side+'" aria
 function authScene(inner,after){return '<div class="scene authscene"><div class="titleimg" role="img" aria-label="XAU/USD"></div>'+(after?'<div class="authrow">':'')+'<section class="authcard" aria-label="Přihlášení">'+inner+'</section>'+(after?after+'</div>':'')+'</div>'}
 /* popis aplikace pod přihlašovacím oknem */
 var ABOUT='<section class="about" aria-label="O aplikaci">'+
-  '<p>XAU/USD je aplikace pro automatické kopírování obchodů se zlatem, která kombinuje robotické a manuální strategie. Zatímco <b class="ab-blue">robotické</b> se řídí přesně danými algoritmy (doporučený vklad od 2500$), <b class="ab-orange">manuální</b> obchodování vychází z technické a fundamentální analýzy (doporučený vklad od 1000$). Velikost otevíraných pozic i výsledného zisku se automaticky přepočítává podle poměru vašeho vkladu k doporučenému minimu.</p>'+
+  '<p>XAU/USD je aplikace pro automatické kopírování obchodů se zlatem, která kombinuje robotické a manuální strategie.<br>'+
+  '<b class="ab-blue">Robotické</b> se řídí přesně danými algoritmy (doporučený vklad od 2500$)<br>'+
+  '<b class="ab-orange">Manuální</b> obchodování vychází z technické a fundamentální analýzy (doporučený vklad od 1000$).<br>'+
+  'Velikost otevíraných pozic i výsledného zisku se automaticky přepočítává podle poměru vašeho vkladu k doporučenému minimu.</p>'+
   '<p class="ab-note"><b>Upozornění:</b> Obchodování se zlatem (CFD) je rizikové a může vést ke ztrátě vloženého kapitálu. Investujte proto pouze prostředky, které si můžete dovolit ztratit.</p></section>';
 function renderMsg(title,text){app.innerHTML=authScene('<div class="authf"><h3>'+esc(title)+'</h3><p>'+text+'</p></div>')}
 function renderSetup(){
