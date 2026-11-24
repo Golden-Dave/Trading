@@ -222,7 +222,8 @@ input.mix:focus-visible::-webkit-slider-thumb{outline:2px solid var(--gold);outl
 .authcard{--c:var(--blue);--hi:var(--blue-hi);box-sizing:border-box;width:min(440px,92vw);padding:28px 30px 30px;border:2px solid var(--hi);border-radius:22px;background:#04060f;box-shadow:0 0 28px -4px var(--c),inset 0 0 22px -10px var(--c);font-size:16px}
 .authcard .authf{max-width:none}
 .about{box-sizing:border-box;width:min(440px,92vw);padding:4px 6px 0;color:var(--muted);font-size:15px;line-height:1.55}
-.about h4{margin:0 0 .4em;font-family:var(--f-display);font-size:1.25em;color:#fff}
+.authrow{display:flex;flex-direction:column;align-items:center;gap:clamp(12px,4vh,40px)}
+@media (min-width:900px){.authrow{flex-direction:row;align-items:center;gap:40px}.authrow .about{padding:0}}
 .about p{margin:0 0 .6em}
 .about ul{margin:0 0 .6em;padding-left:1.2em}
 .about li{margin:.25em 0}
@@ -455,9 +456,9 @@ function render(){
 function sceneHTML(a,b){return '<div class="scene"><button type="button" class="titleimg" data-a="menu" aria-label="XAU/USD – účet a nastavení" title="Účet a nastavení"></button><div class="stands">'+a+b+'</div></div>'}
 function shell(side,head,body,btns){return '<section class="stand '+side+'" aria-label="'+(side==="robot"?"Robotické":"Manuální")+' obchody"><div class="frame"><div class="shead">'+head+'</div><div class="content">'+body+'</div>'+(btns||'')+'</div></section>'}
 /* úvodní obrazovka (přihlášení, založení správce, hlášky): jen nadpis XAU/USD a jedno okno */
-function authScene(inner,after){return '<div class="scene authscene"><div class="titleimg" role="img" aria-label="XAU/USD"></div><section class="authcard" aria-label="Přihlášení">'+inner+'</section>'+(after||'')+'</div>'}
+function authScene(inner,after){return '<div class="scene authscene"><div class="titleimg" role="img" aria-label="XAU/USD"></div>'+(after?'<div class="authrow">':'')+'<section class="authcard" aria-label="Přihlášení">'+inner+'</section>'+(after?after+'</div>':'')+'</div>'}
 /* popis aplikace pod přihlašovacím oknem */
-var ABOUT='<section class="about" aria-label="O aplikaci"><h4>O aplikaci</h4>'+
+var ABOUT='<section class="about" aria-label="O aplikaci">'+
   '<p>XAU/USD je aplikace pro automatické kopírování obchodů se zlatem, která kombinuje robotické a manuální strategie. Zatímco <b class="ab-blue">robotické</b> se řídí přesně danými algoritmy (doporučený vklad od 2500$), <b class="ab-orange">manuální</b> obchodování vychází z technické a fundamentální analýzy (doporučený vklad od 1000$). Velikost otevíraných pozic i výsledného zisku se automaticky přepočítává podle poměru vašeho vkladu k doporučenému minimu.</p>'+
   '<p class="ab-note"><b>Upozornění:</b> Obchodování se zlatem (CFD) je rizikové a může vést ke ztrátě vloženého kapitálu. Investujte proto pouze prostředky, které si můžete dovolit ztratit.</p></section>';
 function renderMsg(title,text){app.innerHTML=authScene('<div class="authf"><h3>'+esc(title)+'</h3><p>'+text+'</p></div>')}
