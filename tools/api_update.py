@@ -93,7 +93,16 @@ def main(acc='12329555', target=None):
         gf = os.path.join(tmp, 'growth.txt')
         with open(gf, 'w', encoding='utf-8') as f:
             f.write(f'GROWTH {len(pts)} SUM {merge_trades.h36(body)}\n{body}')
-        enrich.main(gf, target)
+        dp = {}
+        for row in daily:
+            for y in (row if isinstance(row, list) else [row]):
+                try:
+                    m, dd, yy = y['date'].split('/')
+                    dp[f'{yy}-{m.zfill(2)}-{dd.zfill(2)}'] = float(y['profit'])
+                except (KeyError, TypeError, ValueError):
+                    pass
+        print(f'Denní zisk z přehledu účtu: {len(dp)} dní.')
+        enrich.main(gf, target, dp)
 
     # kontrola úplnosti: součet lotů za den v souboru proti dennímu přehledu účtu
     have = defaultdict(float)

@@ -42,7 +42,9 @@ def read_growth(path):
     return [(d, float(v)) for d, v in (ln.split('|') for ln in lines[1:])]
 
 
-def main(gpath, trades_csv):
+def main(gpath, trades_csv, day_profit=None):
+    # day_profit: {datum: zisk dne v $} z denního přehledu účtu (API Myfxbooku). Je úplný i ve dnech,
+    # kdy v souboru část obchodů chybí, takže odhad zůstatku pak nezkreslí chybějící obchody.
     growth = read_growth(gpath)
     gfile = trades_csv[:-4] + '-growth.csv'
     with open(gfile, 'w', encoding='utf-8') as f:
@@ -63,9 +65,12 @@ def main(gpath, trades_csv):
     est, bal = {}, None
     cands = []
     for d, _ in growth:
-        p = sum(prof(r) for r in byday.get(d, []))
         r = daily[d]
-        clean = not any(other(x) for x in byday.get(d, []))  # den s jiným symbolem se k odhadu zůstatku nehodí
+        if day_profit and d in day_profit:
+            p, clean = day_profit[d], True
+        else:
+            p = sum(prof(r) for r in byday.get(d, []))
+            clean = not any(other(x) for x in byday.get(d, []))  # den s jiným symbolem se k odhadu zůstatku nehodí
         b = p / r if clean and abs(r) > 0.002 and p * r > 0 else None
         cands.append((d, b, r))
     good = [b for _, b, _ in cands if b]

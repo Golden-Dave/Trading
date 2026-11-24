@@ -674,8 +674,8 @@ function viewObch(u,side,st){
   var head='<div class="ctrls">'+seg(side,"tper",[["day","Denní"],["week","Týdenní"],["month","Měsíční"],["year","Roční"]])+'</div>';
   if(!st.trades.length)return head+noData();
   var b=buckets(st,per),pcts=b.map(function(x){return x.pct}).filter(isFinite);
-  /* počet kalendářních období od začátku vyhodnocení do dneška (včetně rozpracovaného) */
-  var calP=0,ps=periodStart(new Date(st.start),per),now=new Date();
+  /* počet kalendářních období od začátku vyhodnocení (nebo od prvního obchodu v datech, je-li pozdější) do dneška (včetně rozpracovaného) */
+  var calP=0,ps=periodStart(new Date(Math.max(st.start,new Date(st.trades[0].t).getTime())),per),now=new Date();
   while(ps<=now&&calP<5000){calP++;var nx=new Date(ps);if(per==="day")nx.setDate(nx.getDate()+1);else if(per==="week")nx.setDate(nx.getDate()+7);else if(per==="month")nx.setMonth(nx.getMonth()+1);else nx.setFullYear(nx.getFullYear()+1);ps=nx}
   calP=Math.max(1,calP);
   var curKey=periodStart(new Date(),per).getTime(),cur=b.find(function(x){return x.start.getTime()===curKey});
