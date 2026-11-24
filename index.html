@@ -458,11 +458,8 @@ function shell(side,head,body,btns){return '<section class="stand '+side+'" aria
 function authScene(inner,after){return '<div class="scene authscene"><div class="titleimg" role="img" aria-label="XAU/USD"></div><section class="authcard" aria-label="Přihlášení">'+inner+'</section>'+(after||'')+'</div>'}
 /* popis aplikace pod přihlašovacím oknem */
 var ABOUT='<section class="about" aria-label="O aplikaci"><h4>O aplikaci</h4>'+
-  '<p>XAU/USD Panel ukazuje výsledky obchodování se zlatem (XAU/USD) ve dvou oddělených částech:</p>'+
-  '<ul><li><b class="ab-blue">Robotické obchodování</b> – výsledky automatického obchodního signálu, jehož obchody se kopírují.</li>'+
-  '<li><b class="ab-orange">Manuální obchodování</b> – výsledky ručně zadávaných obchodů.</li></ul>'+
-  '<p>Každý uživatel vidí výsledky přepočtené na svůj vklad od svého data začátku: zisk v % i v $, graf vývoje a výpis jednotlivých obchodů. Rozdělení vkladu mezi obě části a Stop loss si může nastavit sám. Data se načítají z Myfxbooku při každém otevření aplikace a automaticky každou celou hodinu.</p>'+
-  '<p class="ab-note">Přístup zakládá správce aplikace. Aplikace slouží jen k přehledu výsledků, nejde o investiční doporučení. Minulé výsledky nezaručují výsledky budoucí.</p></section>';
+  '<p>XAU/USD je aplikace pro automatické kopírování obchodů se zlatem, která kombinuje robotické a manuální strategie. Zatímco <b class="ab-blue">robotické</b> se řídí přesně danými algoritmy (doporučený vklad od 2500$), <b class="ab-orange">manuální</b> obchodování vychází z technické a fundamentální analýzy (doporučený vklad od 1000$). Velikost otevíraných pozic i výsledného zisku se automaticky přepočítává podle poměru vašeho vkladu k doporučenému minimu.</p>'+
+  '<p class="ab-note"><b>Upozornění:</b> Obchodování se zlatem (CFD) je rizikové a může vést ke ztrátě vloženého kapitálu. Investujte proto pouze prostředky, které si můžete dovolit ztratit.</p></section>';
 function renderMsg(title,text){app.innerHTML=authScene('<div class="authf"><h3>'+esc(title)+'</h3><p>'+text+'</p></div>')}
 function renderSetup(){
   app.innerHTML=authScene('<form class="authf" id="fSetup"><h3>Založení správce</h3><p>Aplikace zatím nemá správce. Vytvořte administrátorský účet, kterým budete zakládat a mazat účty dalších uživatelů.</p>'+
