@@ -2,7 +2,7 @@
 """Hodinová aktualizace manuálního obchodování přes oficiální API Myfxbooku (běží na GitHubu).
 
 Použití:  MYFXBOOK_EMAIL=... MYFXBOOK_PASSWORD=... python3 tools/api_update.py [id účtu] [cílový.csv]
-          (výchozí: účet 12324143 -> data/manual.csv)
+          (výchozí: účet 12329555 -> data/manual.csv)
 
 API vrací jen posledních cca 40 obchodů účtu, proto se nové obchody přidávají k těm uloženým
 (stejně jako u tools/collect.js) a nic se nemaže. Křivka růstu se bere z denních výnosů účtu
@@ -42,7 +42,7 @@ def stamp(s):  # "11/13/2026 11:38" -> "2611131138"
     return y[2:] + m.zfill(2) + dd.zfill(2) + hh.zfill(2) + mi.zfill(2)
 
 
-def main(acc='12324143', target=None):
+def main(acc='12329555', target=None):
     target = target or os.path.join(HERE, '..', 'data', 'manual.csv')
     email, pw = os.environ.get('MYFXBOOK_EMAIL', '').strip(), os.environ.get('MYFXBOOK_PASSWORD', '').strip()
     if not email or not pw:
