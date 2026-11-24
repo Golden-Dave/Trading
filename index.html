@@ -504,6 +504,17 @@ function renderLogin(){
     try{await auth.signInWithEmailAndPassword(emailOf(n),val("lP"))}catch(err){busy(e.target,false);setErr("lErr",errText(err))}
   });
 }
+/* Jednorázové vyčištění manuálních obchodů na všech účtech (žádost správce 24. 11. 2026): smažou se uložené obchody
+   i příznak ručně nahraného souboru, odkaz se vrátí na výchozí soubor v repozitáři a data se načtou znovu.
+   Provede se jednou při přihlášení správce; značka RESET_MANUAL se uloží do jeho nastavení. */
+var RESET_MANUAL="2026-11-24";
+async function resetManual(adm){
+  await Promise.all(DB.users.map(function(u){
+    u.trades.manual=[];delete u.settings.manualSrc;u.settings.manualUrl=DEF_URL.manual;
+    if(u===adm)u.settings.resetManual=RESET_MANUAL;
+    return Promise.all([userRef(u.id).collection("trades").doc("manual").delete().catch(fail),persistSettings(u)])}));
+  toast("Manuální obchody smazány na všech účtech, načítám je znovu.");
+}
 async function onAuth(user){
   if(creatingAdmin)return;
   adminOpen=false;if(ov){ov.remove();ov=null}
@@ -518,7 +529,9 @@ async function onAuth(user){
     if(!p.exists){loginErr="Tento účet byl zrušen nebo nemá přístup.";await auth.signOut();return}
     var mine=await loadUserFull(p);DB.users=[mine];
     if(mine.isAdmin){var all=await fs.collection("users").get();DB.users=await Promise.all(all.docs.map(loadUserFull));
-      var mm=DB.users.find(function(u){return u.id===user.uid});if(mm)shareAll(mm).catch(fail)}
+      var mm=DB.users.find(function(u){return u.id===user.uid});
+      if(mm&&mm.settings.resetManual!==RESET_MANUAL)await resetManual(mm);
+      if(mm)shareAll(mm).catch(fail)}
     session=user.uid;render();autoRefresh();scheduleHourly();
   }catch(e){renderMsg("Chyba načítání",esc(errText(e))+'<br><br><button class="act" onclick="location.reload()">Zkusit znovu</button>')}
 }
