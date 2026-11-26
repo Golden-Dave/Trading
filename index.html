@@ -801,7 +801,7 @@ function moveTxt(m){var N={wallet:"peněženka",robot:"robot",manual:"manuál",b
 function mvField(lab,key,from,to,title,cls,attrs){return '<label class="f mvf">'+lab+'<span class="inbtn"><input type="number" step="any" min="0" data-f="'+key+'" placeholder="0,00 $"'+(attrs||'')+'>'+
   '<button type="button" class="act'+(cls||'')+'" data-a="move" data-in="'+key+'" data-from="'+from+'" data-to="'+to+'" title="'+title+'">Proveď</button></span></label>'}
 function bankRow(u){var r=payReq(u);
-  return mvField("Částka pro převod na účet","mvBank","wallet","bank","Z peněženky na bankovní účet",r?' go blink':'',r?' value="'+esc(String(r.amount))+'" disabled':'')}
+  return mvField("Převod na účet","mvBank","wallet","bank","Z peněženky na bankovní účet",r?' go blink':'',r?' value="'+esc(String(r.amount))+'" disabled':'')}
 function payInfo(u){var r=payReq(u),l=u.transfer.payLast;
   if(r)return '<p class="payinfo wait">Čeká se na potvrzení výběru '+usd(+r.amount)+' od administrátora.</p>';
   if(l&&l.status==="rej")return '<p class="payinfo rej">Výběr '+usd(+l.amount)+' ze dne '+dmy(new Date(l.t))+' administrátor zamítl.</p>';
@@ -816,8 +816,8 @@ function viewPrev(u,side,st){
     '<label class="f">Stop loss %<input type="number" step="any" min="0" max="100" id="sl-'+side+'" data-f="'+(side==="robot"?"slRobot":"slManual")+'" value="'+esc((side==="robot"?T.slRobot:T.slManual)||"0")+'"></label>'+
     '<div class="f doact"><span class="lbl">&nbsp;</span><button class="act" data-a="saveprev">Uložit nastavení</button></div>'+
    '</div><div class="grid2 mvgrid">'+
-    mvField("Částka pro převod z peněženky","mvIn","wallet",side,"Z peněženky do "+nm+" obchodování")+
-    mvField("Částka pro převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
+    mvField("Převod z peněženky","mvIn","wallet",side,"Z peněženky do "+nm+" obchodování")+
+    mvField("Převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
     '<div class="mvbank">'+bankRow(u)+'</div>'+
    '</div>'+payInfo(u)+
    (list.length?'<ul class="wd">'+list.map(function(m){var neg=m.from===side||m.to==="bank";return '<li><span>'+dmy(new Date(m.t))+' · '+moveTxt(m)+'</span><span>'+usd(neg?-m.amount:+m.amount)+'</span></li>'}).join("")+'</ul>':'')+
