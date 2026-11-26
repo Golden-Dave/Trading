@@ -360,7 +360,7 @@ var DEF_URL={robot:"https://golden-dave.github.io/Trading/data/gold-evolution.cs
 function defaults(){
   var d=new Date();d.setDate(1);d.setHours(0,0,0,0);
   return {settings:{start:toLocalInput(d),capital:1000,coef:0.8,coefRobot:0.8,coefManual:1,robotUrl:DEF_URL.robot,manualUrl:DEF_URL.manual,robotBalance:"",manualBalance:""},
-    transfer:{robotPct:50,slRobot:"",slManual:"",tpRobot:"",tpManual:"",slUnit:"%",withdraw:"",wdSide:"robot",withdrawals:[],moves:[]}};
+    transfer:{robotPct:50,withdraw:"",wdSide:"robot",withdrawals:[],moves:[]}};
 }
 function me(){return DB.users.find(function(u){return u.id===session})}
 function viewed(){var m=me();if(m&&m.isAdmin&&viewId){var v=DB.users.find(function(u){return u.id===viewId});if(v)return v}return m}
@@ -376,6 +376,7 @@ function withUrls(S){if(!S.robotUrl)S.robotUrl=DEF_URL.robot;if(!S.manualUrl)S.m
 async function loadUserFull(doc){
   var d=doc.data(),df=defaults();
   var u={id:doc.id,username:d.username,isAdmin:!!d.isAdmin,settings:withUrls(Object.assign(df.settings,d.settings||{})),transfer:Object.assign(df.transfer,d.transfer&&Array.isArray(d.transfer.moves)?{}:{moves:null},d.transfer||{}),trades:{robot:[],manual:[]}};
+  ["slRobot","slManual","tpRobot","tpManual","slUnit"].forEach(function(k){delete u.transfer[k]}); /* Stop loss zrušen */
   var ts=await userRef(doc.id).collection("trades").get();
   ts.forEach(function(t){if(u.trades[t.id])u.trades[t.id]=t.data().items||[]});
   return u;
@@ -814,10 +815,7 @@ function viewPrev(u,side,st){
   var T=u.transfer,wb=walletBal(u),nm=side==="robot"?"robotického":"manuálního";
   return '<form class="prevf" data-side="'+side+'" novalidate>'+
    '<div class="walletbox"><div><span class="k">Peněženka</span><span class="v">'+usd(wb)+'</span>'+(payReq(u)?'<span class="k">z toho čeká na výběr '+usd(+payReq(u).amount)+'</span>':'')+'</div><div class="r"><span class="k">V obchodování</span><span class="v">'+usd(st.current)+'</span></div></div>'+
-   '<div class="grid2">'+
-    '<label class="f">Stop loss %<input type="number" step="any" min="0" max="100" id="sl-'+side+'" data-f="'+(side==="robot"?"slRobot":"slManual")+'" value="'+esc((side==="robot"?T.slRobot:T.slManual)||"0")+'"></label>'+
-    '<div class="f doact"><span class="lbl">&nbsp;</span><button class="act" data-a="saveprev">Uložit nastavení</button></div>'+
-   '</div><div class="grid2 mvgrid">'+
+   '<div class="grid2 mvgrid">'+
     mvField("Převod z peněženky","mvIn","wallet",side,"Z peněženky do "+nm+" obchodování")+
     mvField("Převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
     bankRow(u)+
@@ -873,12 +871,6 @@ function lockStands(){
 }
 function placeAllMix(){lockStands();fitRows();document.querySelectorAll("input.mix").forEach(placeMix);initCharts()}
 window.addEventListener("resize",placeAllMix);
-function slHint(T,cap){
-  if(T.slUnit!=="%")return "";
-  var r=+T.slRobot,m=+T.slManual,rp=+T.robotPct,p=[];
-  if(r)p.push("robot ≈ "+usd(cap*rp/100*r/100));if(m)p.push("manuál ≈ "+usd(cap*(100-rp)/100*m/100));
-  return p.length?"Max. ztráta: "+p.join(" · "):"";
-}
 
 /* ---------- trade list window ---------- */
 var tlState=null,tlEl=null;
@@ -953,23 +945,13 @@ app.addEventListener("click",function(e){
     if(!me().isAdmin)u.transfer.lastChange={t:mv.t,kind:"move",from:fr,to:to,amount:amt};
     persistTransfer(u);renderMain();toast("Převedeno "+usd(amt)+" ("+moveTxt(mv)+").")}
 });
-app.addEventListener("submit",function(e){var f=e.target.closest(".prevf");if(!f)return;e.preventDefault();
-  var sle=f.querySelector('[data-f^="sl"]');if(sle){var slv=sle.value.trim().replace(",",".");
-    if(slv!==""&&!(isFinite(+slv)&&+slv>=0&&+slv<=100)){toast("Stop loss musí být v rozsahu 0–100 %.");sle.focus();return}}
-  var u=viewed(),T=u.transfer,before=[T.slRobot,T.slManual].join("|");
-  f.querySelectorAll('[data-f^="sl"]').forEach(function(el){T[el.dataset.f]=el.value});
-  /* změnu, kterou uložil jiný uživatel než správce, uvidí správce ve Správě účtů */
-  if(before!==[T.slRobot,T.slManual].join("|")&&!me().isAdmin)T.lastChange={t:new Date().toISOString(),kind:"sl",slRobot:T.slRobot,slManual:T.slManual};
-  persistTransfer(u).then(function(){toast("Nastavení převodu uloženo.")});renderMain()});
-/* Převod: tlačítko zezelená, když je co uložit / provést (neuložené změny proti uloženým hodnotám) */
+app.addEventListener("submit",function(e){if(e.target.closest(".prevf"))e.preventDefault()});
+/* Převod: tlačítko Proveď zezelená, když je zadaná částka */
 function updDirty(){var T=viewed().transfer;
   app.querySelectorAll(".prevf").forEach(function(f){
-    var sl=f.querySelector('[data-f^="sl"]');
-    var dirty=sl&&String(sl.value).trim()!==String(T[sl.dataset.f]||"0").trim();
-    var sb=f.querySelector('[data-a="saveprev"]');if(sb)sb.classList.toggle("go",!!dirty);
     f.querySelectorAll('[data-a="move"]').forEach(function(pb){var i=f.querySelector('[data-f="'+pb.dataset.in+'"]');pb.classList.toggle("go",pb.classList.contains("blink")||!!(i&&+String(i.value).replace(",",".")>0))})})}
 app.addEventListener("input",function(e){if(e.target.closest&&e.target.closest(".prevf"))updDirty()});
-/* v záložce Převod Enter nic neukládá – ukládá se jen tlačítkem Uložit nastavení */
+/* v záložce Převod Enter nic neprovádí – převod jen tlačítkem Proveď */
 app.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target.tagName==="INPUT"&&e.target.closest(".prevf")){e.preventDefault();e.target.blur()}});
 app.addEventListener("input",function(e){if(e.target.classList&&e.target.classList.contains("mix")){
   /* rozdělení investice je společné – jezdec se hýbe v obou stojáncích najednou */
@@ -986,7 +968,7 @@ function acctLine(m){return '<span class="who">Přihlášen: <b>'+esc(m.username
 function newChange(u){var c=u.transfer&&u.transfer.lastChange;return !!(c&&c.t&&u.transfer.changeAck!==c.t)}
 function changeText(u){var c=u.transfer.lastChange,d=new Date(c.t);
   if(c.kind==="move")return '<b>'+esc(u.username)+'</b> převedl '+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+' '+usd(c.amount)+' ('+moveTxt(c)+').';
-  return '<b>'+esc(u.username)+'</b> změnil '+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+' nastavení převodu: '+(c.robotPct!=null?'rozdělení robot '+c.robotPct+' % / manuál '+(100-c.robotPct)+' %, ':'')+'Stop loss robot '+esc(c.slRobot||"0")+' %, manuál '+esc(c.slManual||"0")+' %.'}
+  return '<b>'+esc(u.username)+'</b> změnil '+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+' nastavení převodu'+(c.robotPct!=null?': rozdělení robot '+c.robotPct+' % / manuál '+(100-c.robotPct)+' %':'')+'.'}
 /* Mezery v manuálních obchodech: stahování na GitHubu porovná denní součty lotů s účtem na Myfxbooku a dny,
    kde v souboru obchody chybí, zapíše do data/manual-gaps.json. Správce je uvidí tady. */
 var gapInfo=null;
