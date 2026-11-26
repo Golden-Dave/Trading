@@ -691,7 +691,8 @@ function viewInv(u,side,st){
 }
 function viewGraf(u,side,st){
   var s=ui[side];
-  var head='<div class="ctrls">'+seg(side,"unit",[["pct","%"],["usd","$"],["lot","Lot"],["pips","Pips"]])+seg(side,"per",[["day","Dny"],["week","Týdny"],["month","Měsíce"],["year","Roky"]])+'</div>';
+  if(s.unit==="pips")s.unit="pct"; /* Pipy z grafu zrušeny – dříve zvolené Pipy se zobrazí jako % */
+  var head='<div class="ctrls">'+seg(side,"unit",[["pct","%"],["usd","$"],["lot","Lot"]])+seg(side,"per",[["day","Dny"],["week","Týdny"],["month","Měsíce"],["year","Roky"]])+'</div>';
   var all=bucketsAll(u,side,st,s.per),hid=0;
   var b=all.filter(function(x){var ok=s.unit==="usd"?!x.pre&&isFinite(x.profit):s.unit==="pct"?isFinite(x.pct):x.nx>0;if(!ok)hid++;return ok});
   if(!b.length)return head+noData();
