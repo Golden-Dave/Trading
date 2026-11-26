@@ -900,23 +900,19 @@ function tlKey(e){if(e.key==="Escape")closeList()}
 /* Historie převodů (peněženka, stánky, účet) – okno ve stejném stylu jako výpis obchodů */
 function renderHist(){
   if(!tlState||!tlState.hist)return;var u=viewed();if(!u)return closeList();
-  var side=tlState.side,S=u.settings,start=new Date(S.start),N={wallet:"Peněženka",robot:"Robotické",manual:"Manuální",bank:"Účet"};
-  var ev=[{t:start.getTime(),txt:"Počáteční vklad",from:"",to:"wallet",amount:+S.capital||0}];
-  ledger(u).forEach(function(m){ev.push({t:m.init?start.getTime():new Date(m.t).getTime(),txt:m.init?"Počáteční rozdělení":"",from:m.from,to:m.to,amount:+m.amount||0})});
-  ev.sort(function(a,b){return a.t-b.t});
-  var w=0,out=0;ev.forEach(function(e){if(e.to==="wallet")w+=e.amount;if(e.from==="wallet")w-=e.amount;if(e.to==="bank")out+=e.amount;e.w=w});
-  var r=payReq(u),l=u.transfer.payLast,extra=[];
-  if(r)extra.push({t:new Date(r.t).getTime(),from:"wallet",to:"bank",amount:+r.amount,state:"čeká na potvrzení"});
-  if(l&&l.status==="rej")extra.push({t:new Date(l.t).getTime(),from:"wallet",to:"bank",amount:+l.amount,state:"zamítnuto"});
+  /* jen převody daného stánku (z peněženky do stánku a ze stánku do peněženky), podle toho, odkud se historie otevřela */
+  var side=tlState.side,S=u.settings,start=new Date(S.start),N={wallet:"Peněženka",robot:"Robotické",manual:"Manuální",bank:"Účet"},nm=side==="robot"?"robotického":"manuálního";
+  var ev=ledger(u).filter(function(m){return m.from===side||m.to===side}).map(function(m){return {t:m.init?start.getTime():new Date(m.t).getTime(),txt:m.init?"Počáteční rozdělení":"",from:m.from,to:m.to,a:m.to===side?+m.amount:-m.amount}});
+  ev.sort(function(a,b){return b.t-a.t});
+  var inn=0,out=0;ev.forEach(function(e){if(e.a>0)inn+=e.a;else out-=e.a});
   var fmt=function(t){var d=new Date(t);return dmyShort(d)+'<br>'+pad(d.getHours())+':'+pad(d.getMinutes())};
-  var rows=extra.concat(ev.slice().reverse()).map(function(e){var dir=e.from?N[e.from]+' → '+N[e.to]:'→ '+N[e.to];
-    return '<tr'+(e.state?' class="tlpend"':'')+'><td>'+fmt(e.t)+'</td><td>'+(e.txt?esc(e.txt)+' · ':'')+dir+(e.state?' · <b>'+e.state+'</b>':'')+'</td><td class="'+(e.to==="bank"?'neg':'pos')+'">'+usd(e.to==="bank"?-e.amount:e.amount)+'</td><td>'+(e.state?'—':usd(e.w))+'</td></tr>'}).join("");
+  var rows=ev.map(function(e){return '<tr><td>'+(e.txt?dmyShort(new Date(e.t)):fmt(e.t))+'</td><td>'+(e.txt?esc(e.txt)+' · ':'')+N[e.from]+' → '+N[e.to]+'</td><td class="'+cls(e.a)+'">'+usd(e.a,true)+'</td></tr>'}).join("");
   if(!tlEl){tlEl=document.createElement("div");tlEl.className="tl";document.body.appendChild(tlEl);
     tlEl.addEventListener("click",function(e){if(e.target===tlEl||e.target.closest("[data-tl=close]"))return closeList();if(e.target.closest("[data-tl=more]")){tlState.n+=500;renderList()}});
     document.addEventListener("keydown",tlKey)}
-  tlEl.innerHTML='<div class="tlbox '+side+'" role="dialog" aria-modal="true" aria-label="Historie převodů"><div class="tlhead"><h3>Historie převodů</h3><button type="button" class="tlx" data-tl="close" aria-label="Zavřít">×</button></div>'+
-   '<div class="tlsum"><span>Peněženka <b>'+usd(walletBal(u))+'</b></span><span>Robotické <b>'+usd(stats(u,"robot").current)+'</b></span><span>Manuální <b>'+usd(stats(u,"manual").current)+'</b></span><span>Na účet celkem <b>'+usd(out)+'</b></span></div>'+
-   '<div class="tlscroll"><table class="tlt hist"><thead><tr><th>Datum</th><th>Převod</th><th>Částka</th><th>Peněženka</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+  tlEl.innerHTML='<div class="tlbox '+side+'" role="dialog" aria-modal="true" aria-label="Historie převodů '+nm+' obchodování"><div class="tlhead"><h3>Historie převodů '+nm+' obchodování</h3><button type="button" class="tlx" data-tl="close" aria-label="Zavřít">×</button></div>'+
+   '<div class="tlsum"><span>Investice <b class="'+cls(stats(u,side).pnl)+'">'+usd(stats(u,side).current)+'</b></span><span>Z peněženky celkem <b>'+usd(inn)+'</b></span><span>Do peněženky celkem <b>'+usd(out)+'</b></span></div>'+
+   (rows?'<div class="tlscroll"><table class="tlt hist"><thead><tr><th>Datum</th><th>Převod</th><th>Částka</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p class="tlempty">Zatím žádné převody.</p>')+
    '<div class="tlfoot"><span></span><button type="button" class="act" data-tl="close">Zavřít</button></div></div>';
   var x=tlEl.querySelector(".tlx");if(x)x.focus();
 }
