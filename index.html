@@ -221,6 +221,13 @@ label.mixlab{display:block;line-height:1.5;font-size:min(13px,1em)}
 .mv{position:absolute;top:0;white-space:nowrap;font-family:var(--f-mono);font-size:min(13px,1em);font-weight:600;font-variant-numeric:tabular-nums}
 .mvb{color:var(--blue-hi);text-shadow:0 0 8px var(--blue)}.mvo{color:var(--orange-hi);text-shadow:0 0 8px var(--orange)}
 .mixvals+input.mix{margin-top:2px}
+/* Převod: stav peněženky a částka ve stánku */
+.walletbox{display:flex;justify-content:space-between;gap:1em;padding:.55em .8em;margin:0 0 min(12px,.8em);border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
+.walletbox>div{display:flex;flex-direction:column;gap:.15em;min-width:0}.walletbox .r{text-align:right}
+.walletbox .k{font-size:.8em;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.prevf label.f{white-space:nowrap;position:relative;z-index:1}
+.prevf label.f input{white-space:normal}
+.walletbox .v{font-family:var(--f-mono);font-weight:700;font-size:1.15em;color:#fff;white-space:nowrap}
 /* Převod: texty a hodnoty ve stejné velikosti jako v záložce Investice */
 .prevf label.mixlab,.prevf label.f,.prevf .doact{font-size:1.035em;text-transform:uppercase;letter-spacing:.06em;color:var(--label)}
 .prevf .mixvals{height:2em}
@@ -338,7 +345,7 @@ var DEF_URL={robot:"https://golden-dave.github.io/Trading/data/gold-evolution.cs
 function defaults(){
   var d=new Date();d.setDate(1);d.setHours(0,0,0,0);
   return {settings:{start:toLocalInput(d),capital:1000,coef:0.8,coefRobot:0.8,coefManual:1,robotUrl:DEF_URL.robot,manualUrl:DEF_URL.manual,robotBalance:"",manualBalance:""},
-    transfer:{robotPct:50,slRobot:"",slManual:"",tpRobot:"",tpManual:"",slUnit:"%",withdraw:"",wdSide:"robot",withdrawals:[]}};
+    transfer:{robotPct:50,slRobot:"",slManual:"",tpRobot:"",tpManual:"",slUnit:"%",withdraw:"",wdSide:"robot",withdrawals:[],moves:[]}};
 }
 function me(){return DB.users.find(function(u){return u.id===session})}
 function viewed(){var m=me();if(m&&m.isAdmin&&viewId){var v=DB.users.find(function(u){return u.id===viewId});if(v)return v}return m}
@@ -353,7 +360,7 @@ function persistTrades(u,side){if(DEMO)return Promise.resolve();return userRef(u
 function withUrls(S){if(!S.robotUrl)S.robotUrl=DEF_URL.robot;if(!S.manualUrl)S.manualUrl=DEF_URL.manual;return S}
 async function loadUserFull(doc){
   var d=doc.data(),df=defaults();
-  var u={id:doc.id,username:d.username,isAdmin:!!d.isAdmin,settings:withUrls(Object.assign(df.settings,d.settings||{})),transfer:Object.assign(df.transfer,d.transfer||{}),trades:{robot:[],manual:[]}};
+  var u={id:doc.id,username:d.username,isAdmin:!!d.isAdmin,settings:withUrls(Object.assign(df.settings,d.settings||{})),transfer:Object.assign(df.transfer,d.transfer&&Array.isArray(d.transfer.moves)?{}:{moves:null},d.transfer||{}),trades:{robot:[],manual:[]}};
   var ts=await userRef(doc.id).collection("trades").get();
   ts.forEach(function(t){if(u.trades[t.id])u.trades[t.id]=t.data().items||[]});
   return u;
@@ -389,32 +396,49 @@ function toast(m){var h=document.getElementById("toastHost");h.innerHTML='<div c
    Procentní režim: každý obchod nese % výnosu zdrojového účtu (vůči zůstatku na začátku dne) – v rámci dne se
    sčítají, mezi dny se úročí; den začíná ze stavu po započtení koeficientu z předchozích dnů.
    (Proměnné weeks/W drží skupiny obchodů pro uplatnění koeficientu – nyní po dnech.) */
-function simulate(tr,base,coef,pctMode){
+function simulate(tr,base,coef,pctMode,flows){
   var weeks=[],wk=null,dk="";
   tr.forEach(function(t){var d=new Date(t.t),w=periodStart(d,"day").getTime(),k=d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate();
     if(wk!==w){wk=w;dk="";weeks.push([])}
     var W=weeks[weeks.length-1];if(k!==dk){dk=k;W.push([])}W[W.length-1].push(t)});
-  var eq=base,out=[];
+  /* flows: převody do/ze stánku [{t:ms,a:$}] – projeví se od dne převodu (před prvním obchodem po převodu) */
+  var eq=base,out=[],fl=flows||[],fi=0;
+  function flowTo(ms){while(fi<fl.length&&fl[fi].t<=ms){eq+=fl[fi].a;fi++}}
   weeks.forEach(function(W){
-    var cur=eq,items=[];
+    flowTo(new Date(W[0][0].t).getTime());
+    var cur=eq,items=[],eqb=eq;
     W.forEach(function(day){var ds=cur;day.forEach(function(t){var raw=pctMode?ds*t.pct/100:t.profit;cur+=raw;items.push([t,raw])})});
     var sum=cur-eq,f=sum>0?coef:1;
-    items.forEach(function(x){out.push(pctMode?Object.assign({},x[0],{srcProfit:x[0].profit,profit:x[1],adj:x[1]*f,f:f}):Object.assign({},x[0],{adj:x[1]*f,f:f}))});
+    items.forEach(function(x){out.push(pctMode?Object.assign({},x[0],{srcProfit:x[0].profit,profit:x[1],adj:x[1]*f,f:f,eqb:eqb}):Object.assign({},x[0],{adj:x[1]*f,f:f,eqb:eqb}))});
     eq+=sum*f});
+  flowTo(Infinity);out.eqEnd=eq;
   return out;
 }
+/* Peněženka: počáteční vklad (settings.capital) jde do peněženky; z ní se převádí do stánků a zpět a z peněženky
+   na účet. Převody jsou v transfer.moves [{t,from,to,amount,init?}], from/to = wallet|robot|manual|bank.
+   Starší účty (rozdělení v % a výběry ze stánku) se převedou: počáteční rozdělení = převody z peněženky k datu začátku
+   (init – drží se data začátku, i když ho správce změní), výběr = převod do peněženky a hned na účet. */
+function ledger(u){var T=u.transfer,S=u.settings;
+  if(!Array.isArray(T.moves)){var cap=+S.capital||0,rp=+T.robotPct;if(!isFinite(rp))rp=50;
+    var r=Math.round(cap*rp)/100,mv=[];
+    if(r>0)mv.push({t:"",from:"wallet",to:"robot",amount:r,init:true});
+    if(cap-r>0)mv.push({t:"",from:"wallet",to:"manual",amount:Math.round((cap-r)*100)/100,init:true});
+    (T.withdrawals||[]).forEach(function(w){var a=+w.amount||0;if(a>0&&w.side){mv.push({t:w.t,from:w.side,to:"wallet",amount:a});mv.push({t:w.t,from:"wallet",to:"bank",amount:a})}});
+    T.moves=mv}
+  return T.moves}
+function walletBal(u){var b=+u.settings.capital||0;ledger(u).forEach(function(m){var a=+m.amount||0;if(m.to==="wallet")b+=a;if(m.from==="wallet")b-=a});return Math.round(b*100)/100}
 function stats(u,side){
   var S=u.settings,T=u.transfer;
-  var share=side==="robot"?+T.robotPct:100-T.robotPct;
-  var base=(+S.capital||0)*share/100;
-  var start=new Date(S.start).getTime()||0,cv=side==="robot"?S.coefRobot:S.coefManual,coef=+(cv==null||cv===""?S.coef:cv);if(!isFinite(coef))coef=1;
+  var start=new Date(S.start).getTime()||0;
+  var flows=ledger(u).filter(function(m){return m.from===side||m.to===side}).map(function(m){return {t:m.init?start:new Date(m.t).getTime()||start,a:m.to===side?+m.amount:-m.amount}}).sort(function(a,b){return a.t-b.t});
+  var base=flows.reduce(function(s,f){return f.a>0?s+f.a:s},0),wd=flows.reduce(function(s,f){return f.a<0?s-f.a:s},0),share=NaN;
+  var cv=side==="robot"?S.coefRobot:S.coefManual,coef=+(cv==null||cv===""?S.coef:cv);if(!isFinite(coef))coef=1;
   var tr=(u.trades[side]||[]).filter(function(t){return new Date(t.t).getTime()>=start}).sort(function(a,b){return new Date(a.t)-new Date(b.t)});
   var pctMode=tr.length>0&&tr.every(function(t){return typeof t.pct==="number"&&isFinite(t.pct)});
-  tr=simulate(tr,base,coef,pctMode);
+  tr=simulate(tr,0,coef,pctMode,flows);
   var pnl=0,w=0,l=0;tr.forEach(function(t){pnl+=t.adj;if(t.profit>0)w++;else if(t.profit<0)l++});
-  var wd=(T.withdrawals||[]).filter(function(x){return x.side===side}).reduce(function(a,x){return a+(+x.amount||0)},0);
   var mb=side==="robot"?S.robotBalance:S.manualBalance;
-  return {base:base,share:share,trades:tr,pnl:pnl,wins:w,losses:l,wd:wd,current:base+pnl-wd,
+  return {base:base,share:share,trades:tr,pnl:pnl,wins:w,losses:l,wd:wd,current:tr.eqEnd,flows:flows,
     winrate:tr.length?w/tr.length*100:NaN,coef:coef,start:start,pctMode:pctMode,manualBal:mb===""||mb==null?null:+mb};
 }
 function periodStart(d,per){
@@ -428,11 +452,10 @@ function bucketLabel(d,per){if(per==="day"||per==="week")return dmy(d);if(per===
 function buckets(st,per){
   var map={},order=[];
   st.trades.forEach(function(t){var s=periodStart(new Date(t.t),per),k=s.getTime();
-    if(!map[k]){map[k]={start:s,profit:0,pips:0,lots:0,n:0,nx:0};order.push(k)}
+    if(!map[k]){map[k]={start:s,profit:0,pips:0,lots:0,n:0,nx:0,bal:t.eqb};order.push(k)}
     var b=map[k];b.profit+=t.adj;b.pips+=(+t.pips||0)*(t.f==null?1:t.f);b.lots+=(+t.lots||0)*(t.f==null?1:t.f);b.n++;if(!t.sym)b.nx++});
   order.sort(function(a,b){return a-b});
-  var bal=st.base;
-  return order.map(function(k){var b=map[k];b.pct=bal>0?b.profit/bal*100:NaN;b.label=bucketLabel(b.start,per);bal+=b.profit;return b});
+  return order.map(function(k){var b=map[k];b.pct=b.bal>0?b.profit/b.bal*100:NaN;b.label=bucketLabel(b.start,per);return b});
 }
 
 /* Graf: všechna období z načtených dat, i před začátkem vyhodnocení. Období před začátkem nemají částku v $
@@ -627,7 +650,7 @@ function viewInv(u,side,st){
   var mb=st.manualBal,sd=new Date(st.start);
   return '<div class="tiles big">'+
    tile("Vklad",'<span class="vrow" title="Vyhodnocuje se od uvedeného data"><span>'+num(Math.round(st.base),0)+'<span class="un">$</span></span><span>'+dmyShort(new Date(st.start))+'</span></span>')+
-   tile("Stav účtu",'<span class="'+cls(st.current-st.base)+'">'+u1(st.current,"$")+'</span>',[st.wd?"výběry "+usd(st.wd):""].filter(Boolean).join(" · "))+
+   tile("Stav účtu",'<span class="'+cls(st.current-st.base)+'">'+u1(st.current,"$")+'</span>',[st.wd?"do peněženky "+usd(st.wd):""].filter(Boolean).join(" · "))+
    tile('Zisk <span class="nc">PnL</span>','<span class="vrow"><span class="'+cls(st.pnl)+'">'+u1(st.pnl,"$")+'</span><span class="'+cls(st.pnl)+'">'+u1(st.base?st.pnl/st.base*100:NaN,"%")+'</span></span>')+
    winTile(st)+
    (mb!=null?tile("Skutečný zůstatek (zadaný ručně)",usd(mb),"rozdíl proti výpočtu "+usd(mb-st.current,true),true):"")+
@@ -758,19 +781,22 @@ function viewObch(u,side,st){
 /* dlaždice Statistiky: vlevo hodnota za probíhající období, vpravo průměr */
 function pairTile(k,a,b){return '<div class="tile pair"><div class="pc"><div class="k">'+k+'</div><div class="v">'+a+'</div></div><div class="pc r"><div class="k">Průměr</div><div class="v">'+b+'</div></div></div>'}
 function durTxt(ms){var U=function(n,j){return n+'<span class="un">'+j+'</span>'};var m=Math.round(ms/60000);if(m<60)return U(m,"min");var h=Math.floor(m/60);m%=60;if(h<24)return U(h,"h")+(m?" "+U(m,"min"):"");var d=Math.floor(h/24);h%=24;return U(d,"d")+(h?" "+U(h,"h"):"")}
+function moveTxt(m){var N={wallet:"peněženka",robot:"robot",manual:"manuál",bank:"účet"};return N[m.from]+" → "+N[m.to]}
 function viewPrev(u,side,st){
-  var T=u.transfer,cap=+u.settings.capital||0,rp=+T.robotPct,mp=100-rp,list=(T.withdrawals||[]).slice(-5).reverse();
+  var T=u.transfer,wb=walletBal(u),nm=side==="robot"?"robotického":"manuálního";
+  var list=ledger(u).filter(function(m){return !m.init&&(m.from===side||m.to===side||m.to==="bank")}).slice(-5).reverse();
+  var row=function(lab,key,from,to,title){return '<label class="f">'+lab+'<input type="number" step="any" min="0" data-f="'+key+'" placeholder="0,00 $"></label>'+
+    '<div class="f doact"><span class="lbl">&nbsp;</span><button type="button" class="act" data-a="move" data-in="'+key+'" data-from="'+from+'" data-to="'+to+'" title="'+title+'">Proveď</button></div>'};
   return '<form class="prevf" data-side="'+side+'" novalidate>'+
-   '<label class="f mixlab" for="rng-'+side+'">Rozdělení investice</label>'+
-   '<div class="mixvals"><span class="mv mvb"></span><span class="mv mvo"></span></div>'+
-   '<input type="range" class="mix" id="rng-'+side+'" min="0" max="100" step="5" value="'+rp+'" data-f="robotPct" data-cap="'+cap+'" style="'+mixStyle(rp)+'">'+
-   '<div class="grid2" style="margin-top:min(14px,.9em)">'+
+   '<div class="walletbox"><div><span class="k">Peněženka</span><span class="v">'+usd(wb)+'</span></div><div class="r"><span class="k">V obchodování</span><span class="v">'+usd(st.current)+'</span></div></div>'+
+   '<div class="grid2">'+
     '<label class="f">Stop loss %<input type="number" step="any" min="0" max="100" id="sl-'+side+'" data-f="'+(side==="robot"?"slRobot":"slManual")+'" value="'+esc((side==="robot"?T.slRobot:T.slManual)||"0")+'"></label>'+
     '<div class="f doact"><span class="lbl">&nbsp;</span><button class="act" data-a="saveprev">Uložit nastavení</button></div>'+
-    '<label class="f">Částka k výběru $<input type="number" step="any" min="0" id="wa-'+side+'" data-f="withdraw" value="'+esc(T.withdraw)+'" placeholder="0,00"></label>'+
-    '<div class="f doact"><span class="lbl">&nbsp;</span><button type="button" class="act" data-a="dowd" data-side="'+side+'">Proveď</button></div>'+
+    row("Částka pro převod z peněženky","mvIn","wallet",side,"Z peněženky do "+nm+" obchodování")+
+    row("Částka pro převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
+    row("Částka pro převod na účet","mvBank","wallet","bank","Z peněženky na bankovní účet")+
    '</div>'+
-   (list.length?'<ul class="wd">'+list.map(function(w){return '<li><span>'+dmy(new Date(w.t))+' · '+(w.side==="robot"?"robot":"manuál")+'</span><span>'+usd(-w.amount)+'</span></li>'}).join("")+'</ul>':'')+
+   (list.length?'<ul class="wd">'+list.map(function(m){var neg=m.from===side||m.to==="bank";return '<li><span>'+dmy(new Date(m.t))+' · '+moveTxt(m)+'</span><span>'+usd(neg?-m.amount:+m.amount)+'</span></li>'}).join("")+'</ul>':'')+
    '</form>';
 }
 function mixStyle(rp){rp=+rp;
@@ -863,26 +889,30 @@ app.addEventListener("click",function(e){
   if(a==="menu"){if(me().isAdmin){adminOpen=true;adminSel=adminSel||me().id;return renderAdmin()}return renderAcct()}
   if(a==="admin"){adminOpen=true;adminSel=adminSel||me().id;return renderAdmin()}
   if(a==="back"){viewId=null;return renderMain()}
-  if(a==="dowd"){e.preventDefault();var u=viewed(),wa=t.closest("form").querySelector('[data-f="withdraw"]');u.transfer.withdraw=wa?wa.value:"";var amt=+u.transfer.withdraw;
-    if(!(amt>0)){toast("Zadejte částku k výběru.");return}
-    var wside=t.dataset.side||u.transfer.wdSide;u.transfer.withdrawals.push({t:new Date().toISOString(),amount:amt,side:wside});u.transfer.withdraw="";
-    persistTransfer(u);renderMain();toast("Výběr "+usd(amt)+" zaznamenán.")}
+  if(a==="move"){e.preventDefault();var u=viewed(),inp=t.closest("form").querySelector('[data-f="'+t.dataset.in+'"]'),amt=Math.round(+String(inp?inp.value:"").replace(",",".")*100)/100;
+    if(!(amt>0)){toast("Zadejte částku pro převod.");if(inp)inp.focus();return}
+    var fr=t.dataset.from,to=t.dataset.to,avail=fr==="wallet"?walletBal(u):Math.floor(stats(u,fr).current*100)/100;
+    if(amt>avail+1e-9){toast("Nedostatek prostředků – k dispozici "+usd(Math.max(0,avail))+".");if(inp)inp.focus();return}
+    var mv={t:new Date().toISOString(),from:fr,to:to,amount:amt};ledger(u).push(mv);
+    /* převod, který provedl jiný uživatel než správce, uvidí správce ve Správě účtů */
+    if(!me().isAdmin)u.transfer.lastChange={t:mv.t,kind:"move",from:fr,to:to,amount:amt};
+    persistTransfer(u);renderMain();toast("Převedeno "+usd(amt)+" ("+moveTxt(mv)+").")}
 });
 app.addEventListener("submit",function(e){var f=e.target.closest(".prevf");if(!f)return;e.preventDefault();
   var sle=f.querySelector('[data-f^="sl"]');if(sle){var slv=sle.value.trim().replace(",",".");
     if(slv!==""&&!(isFinite(+slv)&&+slv>=0&&+slv<=100)){toast("Stop loss musí být v rozsahu 0–100 %.");sle.focus();return}}
-  var u=viewed(),T=u.transfer,before=[T.robotPct,T.slRobot,T.slManual].join("|");
-  f.querySelectorAll('[data-f]').forEach(function(el){var k=el.dataset.f;if(k==="withdraw")return;T[k]=k==="robotPct"?+el.value:el.value});
+  var u=viewed(),T=u.transfer,before=[T.slRobot,T.slManual].join("|");
+  f.querySelectorAll('[data-f^="sl"]').forEach(function(el){T[el.dataset.f]=el.value});
   /* změnu, kterou uložil jiný uživatel než správce, uvidí správce ve Správě účtů */
-  if(before!==[T.robotPct,T.slRobot,T.slManual].join("|")&&!me().isAdmin)T.lastChange={t:new Date().toISOString(),robotPct:T.robotPct,slRobot:T.slRobot,slManual:T.slManual};
+  if(before!==[T.slRobot,T.slManual].join("|")&&!me().isAdmin)T.lastChange={t:new Date().toISOString(),kind:"sl",slRobot:T.slRobot,slManual:T.slManual};
   persistTransfer(u).then(function(){toast("Nastavení převodu uloženo.")});renderMain()});
 /* Převod: tlačítko zezelená, když je co uložit / provést (neuložené změny proti uloženým hodnotám) */
 function updDirty(){var T=viewed().transfer;
   app.querySelectorAll(".prevf").forEach(function(f){
-    var r=f.querySelector("input.mix"),sl=f.querySelector('[data-f^="sl"]'),wa=f.querySelector('[data-f="withdraw"]');
-    var dirty=(r&&+r.value!==+T.robotPct)||(sl&&String(sl.value).trim()!==String(T[sl.dataset.f]||"0").trim());
-    var sb=f.querySelector('[data-a="saveprev"]'),pb=f.querySelector('[data-a="dowd"]');
-    if(sb)sb.classList.toggle("go",!!dirty);if(pb)pb.classList.toggle("go",!!(wa&&+String(wa.value).replace(",",".")>0))})}
+    var sl=f.querySelector('[data-f^="sl"]');
+    var dirty=sl&&String(sl.value).trim()!==String(T[sl.dataset.f]||"0").trim();
+    var sb=f.querySelector('[data-a="saveprev"]');if(sb)sb.classList.toggle("go",!!dirty);
+    f.querySelectorAll('[data-a="move"]').forEach(function(pb){var i=f.querySelector('[data-f="'+pb.dataset.in+'"]');pb.classList.toggle("go",!!(i&&+String(i.value).replace(",",".")>0))})})}
 app.addEventListener("input",function(e){if(e.target.closest&&e.target.closest(".prevf"))updDirty()});
 /* v záložce Převod Enter nic neukládá – ukládá se jen tlačítkem Uložit nastavení */
 app.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target.tagName==="INPUT"&&e.target.closest(".prevf")){e.preventDefault();e.target.blur()}});
@@ -891,7 +921,7 @@ app.addEventListener("input",function(e){if(e.target.classList&&e.target.classLi
   app.querySelectorAll("input.mix").forEach(function(m){if(m!==e.target)m.value=e.target.value;m.setAttribute("style",mixStyle(e.target.value));placeMix(m)});updDirty();
   var lb=e.target.closest("form")&&e.target.closest("form").querySelector(".mixlab");if(lb){var b=lb.querySelectorAll("b");if(b.length===2){b[0].textContent=e.target.value+" %";b[1].textContent=(100-e.target.value)+" %"}}}});
 
-function readPrev(f){var u=viewed();f.querySelectorAll("[data-f]").forEach(function(el){var k=el.dataset.f;u.transfer[k]=k==="robotPct"?+el.value:el.value})}
+
 
 /* ---------- password change ---------- */
 var ov=null;
@@ -900,7 +930,8 @@ function acctLine(m){return '<span class="who">Přihlášen: <b>'+esc(m.username
 /* změny nastavení převodu, které uživatelé uložili a správce ještě nepotvrdil */
 function newChange(u){var c=u.transfer&&u.transfer.lastChange;return !!(c&&c.t&&u.transfer.changeAck!==c.t)}
 function changeText(u){var c=u.transfer.lastChange,d=new Date(c.t);
-  return '<b>'+esc(u.username)+'</b> změnil '+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+' nastavení převodu: rozdělení robot '+c.robotPct+' % / manuál '+(100-c.robotPct)+' %, Stop loss robot '+esc(c.slRobot||"0")+' %, manuál '+esc(c.slManual||"0")+' %.'}
+  if(c.kind==="move")return '<b>'+esc(u.username)+'</b> převedl '+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+' '+usd(c.amount)+' ('+moveTxt(c)+').';
+  return '<b>'+esc(u.username)+'</b> změnil '+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+' nastavení převodu: '+(c.robotPct!=null?'rozdělení robot '+c.robotPct+' % / manuál '+(100-c.robotPct)+' %, ':'')+'Stop loss robot '+esc(c.slRobot||"0")+' %, manuál '+esc(c.slManual||"0")+' %.'}
 /* Mezery v manuálních obchodech: stahování na GitHubu porovná denní součty lotů s účtem na Myfxbooku a dny,
    kde v souboru obchody chybí, zapíše do data/manual-gaps.json. Správce je uvidí tady. */
 var gapInfo=null;
@@ -1029,7 +1060,7 @@ function renderAdmin(){
    (sel.id===m.id?'':'<button class="act danger" data-x="del">Smazat účet</button>')+'</div></div>'+
    '<form id="fSet"><div class="grid2" style="margin-top:12px">'+
     '<label class="f">Začátek vyhodnocení obchodů<input type="datetime-local" id="eStart" value="'+esc(S.start)+'" required></label>'+
-    '<label class="f">Počáteční kapitál (USD)<input type="number" step="any" min="0" id="eCap" value="'+esc(S.capital)+'" required></label>'+
+    '<label class="f">Počáteční vklad do peněženky (USD)<input type="number" step="any" min="0" id="eCap" value="'+esc(S.capital)+'" required></label>'+
     '<label class="f">Koeficient – robotické obchodování<input type="number" step="any" min="0" id="eCoefR" value="'+esc(S.coefRobot!=null?S.coefRobot:S.coef)+'" required></label>'+
     '<label class="f">Koeficient – manuální obchodování<input type="number" step="any" min="0" id="eCoefM" value="'+esc(S.coefManual!=null?S.coefManual:S.coef)+'" required></label>'+
     '<h4 class="sec">Automatické aktualizace</h4>'+
@@ -1191,7 +1222,7 @@ async function adminSubmit(e){
 /* ---------- start ---------- */
 if(DEMO){
   var df=defaults(),d=new Date();d.setMonth(d.getMonth()-5);df.settings.start=toLocalInput(d);df.settings.robotUrl="https://www.myfxbook.com/";df.settings.manualUrl="https://www.myfxbook.com/";
-  DB.users=[{id:"demo",username:"ukazka",isAdmin:false,settings:df.settings,transfer:df.transfer,trades:{robot:demoTrades(7,.66),manual:demoTrades(19,.58)}}];
+  delete df.transfer.moves;DB.users=[{id:"demo",username:"ukazka",isAdmin:false,settings:df.settings,transfer:df.transfer,trades:{robot:demoTrades(7,.66),manual:demoTrades(19,.58)}}];
   session="demo";render();toast("Ukázkový režim – data se neukládají.");
 }else if(!FIREBASE_CONFIG.apiKey||!FIREBASE_CONFIG.projectId){
   renderMsg("Chybí nastavení Firebase","Otevřete tento soubor v textovém editoru a v horní části do <b>FIREBASE_CONFIG</b> vložte konfiguraci svého projektu z Firebase konzole.");
