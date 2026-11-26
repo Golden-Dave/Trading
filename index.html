@@ -236,6 +236,18 @@ label.mixlab{display:block;line-height:1.5;font-size:min(13px,1em)}
 .prevf .mvgrid{margin-top:1.2em;align-items:end}
 .prevf .pvtiles{grid-template-columns:repeat(2,minmax(0,1fr))}
 .prevf .pvtiles .tile{min-height:0;padding:.75em .95em}
+/* převody ve stylu dlaždic Statistiky: popisek a částka vlevo, tlačítko Proveď vpravo */
+.prevf .pvtiles .tile.pvf{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:.25em .6em;padding:.6em .7em .6em .95em;cursor:text}
+.prevf .pvf .k{grid-column:1/-1;white-space:normal;line-height:1.2;align-self:start}
+.prevf .pvf input.v{display:block;width:100%;min-width:0;box-sizing:border-box;background:none!important;border:0!important;box-shadow:none!important;outline:none;color:#fff;
+  font-family:var(--f-mono);font-weight:700;font-size:1.65em;line-height:1.15;padding:0 0 0 .55em!important;margin:0;-moz-appearance:textfield;appearance:textfield}
+.prevf .pvf input.v::-webkit-outer-spin-button,.prevf .pvf input.v::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.prevf .pvf input.v::placeholder{color:rgba(255,255,255,.28)}
+.prevf .pvf input.v:disabled{opacity:1;-webkit-text-fill-color:#fff}
+.prevf .pvf:focus-within{border-color:var(--hi)}
+.prevf .pvf .act{flex:0 0 auto;padding:.5em .9em;font-size:.85em;text-transform:none;letter-spacing:normal}
+.prevf .histbtn{cursor:pointer;color:var(--gold);font:inherit;font-weight:700;font-size:1.15em;letter-spacing:.06em;align-items:center;justify-content:center}
+.prevf .histbtn:hover{border-color:var(--gold)}
 .prevf .mvgrid label.f{white-space:normal;line-height:1.2}
 .tlt tr.tlpend td{color:#3dffa0}
 .tlt.hist td{white-space:normal;vertical-align:top}.tlt.hist td:nth-child(2){min-width:9em}.tlt.hist td:nth-child(3),.tlt.hist td:nth-child(4){white-space:nowrap;text-align:right}
@@ -804,8 +816,8 @@ function pairTile(k,a,b){return '<div class="tile pair"><div class="pc"><div cla
 function durTxt(ms){var U=function(n,j){return n+'<span class="un">'+j+'</span>'};var m=Math.round(ms/60000);if(m<60)return U(m,"min");var h=Math.floor(m/60);m%=60;if(h<24)return U(h,"h")+(m?" "+U(m,"min"):"");var d=Math.floor(h/24);h%=24;return U(d,"d")+(h?" "+U(h,"h"):"")}
 function moveTxt(m){var N={wallet:"peněženka",robot:"robot",manual:"manuál",bank:"účet"};return N[m.from]+" → "+N[m.to]}
 /* pole s částkou převodu a tlačítkem Proveď uvnitř pole */
-function mvField(lab,key,from,to,title,cls,attrs){return '<label class="f mvf">'+lab+'<span class="inbtn"><input type="number" step="any" min="0" data-f="'+key+'" placeholder="0,00 $"'+(attrs||'')+'>'+
-  '<button type="button" class="act'+(cls||'')+'" data-a="move" data-in="'+key+'" data-from="'+from+'" data-to="'+to+'" title="'+title+'">Proveď</button></span></label>'}
+function mvField(lab,key,from,to,title,cls,attrs){return '<label class="tile pvf"><span class="k">'+lab+'</span><input class="v" type="number" step="any" min="0" data-f="'+key+'" placeholder="0,00"'+(attrs||'')+'>'+
+  '<button type="button" class="act'+(cls||'')+'" data-a="move" data-in="'+key+'" data-from="'+from+'" data-to="'+to+'" title="'+title+'">Proveď</button></label>'}
 function bankRow(u){var r=payReq(u);
   return mvField("Převod na účet","mvBank","wallet","bank","Z peněženky na bankovní účet",r?' go blink':'',r?' value="'+esc(String(r.amount))+'" disabled':'')}
 function payInfo(u){var r=payReq(u),l=u.transfer.payLast;
@@ -819,12 +831,10 @@ function viewPrev(u,side,st){
    '<div class="tiles big pvtiles">'+
     tile("Peněženka",'<span>'+u1(wb,"$")+'</span>',payReq(u)?'z toho čeká na výběr '+usd(+payReq(u).amount):'')+
     tile("Investice",'<span>'+u1(st.current,"$")+'</span>')+
-   '</div>'+
-   '<div class="grid2 mvgrid">'+
     mvField("Převod z peněženky","mvIn","wallet",side,"Z peněženky do "+nm+" obchodování")+
     bankRow(u)+
     mvField("Převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
-    '<div class="f doact"><span class="lbl">&nbsp;</span><button type="button" class="act" data-a="hist" data-side="'+side+'">HISTORIE</button></div>'+
+    '<button type="button" class="tile histbtn" data-a="hist" data-side="'+side+'">HISTORIE</button>'+
    '</div>'+payInfo(u)+
    '</form>';
 }
