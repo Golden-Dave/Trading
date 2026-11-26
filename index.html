@@ -493,8 +493,9 @@ var TITLE_SVG=(function(){var t=function(c,f){return '<path class="'+c+'"'+(f?' 
   '<filter id="tgl1" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur stdDeviation="6"/></filter></defs>'+
   t("ng2","tgl2")+t("ng1","tgl1")+t("nl")+t("nk")+'</svg>'})();
 function sceneHTML(a,b){return '<div class="scene"><button type="button" class="titleimg'+(hasAlert()?' alert':'')+'" data-a="menu" aria-label="XAU/USD – účet a nastavení" title="Účet a nastavení">'+TITLE_SVG+'</button><div class="stands">'+a+b+'</div></div>'}
-/* postavička na rohu stánku: po spuštění vždy rytíři; kliknutím robot / čaroděj a zpět (jen do zavření aplikace) */
-var knights={robot:true,manual:true};
+/* postavička na rohu stánku: při prvním spuštění rytíři; kliknutím robot / čaroděj a zpět; poslední volba se pamatuje v prohlížeči */
+var KNIGHT_KEY="xau-rytiri";
+var knights=(function(){var k={robot:true,manual:true};try{var v=JSON.parse(localStorage.getItem(KNIGHT_KEY)||"null");if(v)["robot","manual"].forEach(function(x){if(typeof v[x]==="boolean")k[x]=v[x]})}catch(e){}return k})();
 function knightOn(side){return knights[side]!==false}
 function shell(side,head,body,btns){return '<section class="stand '+side+(knightOn(side)?' knight':'')+'" aria-label="'+(side==="robot"?"Robotické":"Manuální")+' obchody"><div class="frame">'+'<button type="button" class="charbtn" data-a="char" data-side="'+side+'" aria-label="Vyměnit postavičku (rytíř / '+(side==="robot"?'robot':'čaroděj')+')"></button>'+'<div class="shead">'+head+'</div><div class="content">'+body+'</div>'+(btns||'')+'</div></section>'}
 /* úvodní obrazovka (přihlášení, založení správce, hlášky): jen nadpis XAU/USD a jedno okno */
@@ -855,7 +856,7 @@ app.addEventListener("click",function(e){
   if(a==="logout")return logout();
   if(a==="list"){tlState={side:t.dataset.side,n:200};return renderList()}
   if(a==="pw")return renderPw();
-  if(a==="char"){var on=!knightOn(t.dataset.side);knights[t.dataset.side]=on;var st=t.closest(".stand");if(st)st.classList.toggle("knight",on);return}
+  if(a==="char"){var on=!knightOn(t.dataset.side);knights[t.dataset.side]=on;try{localStorage.setItem(KNIGHT_KEY,JSON.stringify(knights))}catch(e){}var st=t.closest(".stand");if(st)st.classList.toggle("knight",on);return}
   if(a==="menu"){if(me().isAdmin){adminOpen=true;adminSel=adminSel||me().id;return renderAdmin()}return renderAcct()}
   if(a==="admin"){adminOpen=true;adminSel=adminSel||me().id;return renderAdmin()}
   if(a==="back"){viewId=null;return renderMain()}
