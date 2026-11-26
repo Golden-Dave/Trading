@@ -790,7 +790,7 @@ function viewObch(u,side,st){
   return head+'<div class="tiles big six pairs">'+
    pairTile("Obchody",String(cur?cur.n:0),num(st.trades.length/calP,1))+
    pairTile("Návratnost",sp(cur?cur.pct:0),sp(pcts.length?sumP/pcts.length:NaN))+
-   pairTile("Pozic najednou",isFinite(opNow)?String(opNow):"—",isFinite(opAvg)?num(opAvg,1):"—")+
+   pairTile("Souběžné pozice",isFinite(opNow)?String(opNow):"—",isFinite(opAvg)?num(opAvg,1):"—")+
    pairTile("Pozice čas",cm.dn?durTxt(cm.ds/cm.dn):"—",dN?durTxt(dS/dN):"—")+
    pairTile("Max. zisk",sp(cm.hi),sp(hiAvg))+
    pairTile("Max. ztráta",sp(cm.lo),sp(loAvg))+
