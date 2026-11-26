@@ -227,6 +227,11 @@ label.mixlab{display:block;line-height:1.5;font-size:min(13px,1em)}
 .walletbox .k{font-size:.8em;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .prevf label.f{white-space:nowrap;position:relative;z-index:1}
 .prevf label.f input{white-space:normal}
+.act.go.blink{animation:payblink 1.1s ease-in-out infinite}
+@keyframes payblink{50%{background:#0b5e35;box-shadow:0 0 .2em rgba(53,242,154,.2)}}
+@media (prefers-reduced-motion:reduce){.act.go.blink{animation-duration:2.4s}}
+.payinfo{margin:.5em 0 0;font-size:.85em;line-height:1.4}.payinfo.wait{color:#3dffa0}.payinfo.rej{color:var(--red,#ff5a6a)}.payinfo.ok{color:var(--muted)}
+.chgbtns{display:flex;gap:6px;flex-wrap:wrap}
 .walletbox .v{font-family:var(--f-mono);font-weight:700;font-size:1.15em;color:#fff;white-space:nowrap}
 /* Převod: texty a hodnoty ve stejné velikosti jako v záložce Investice */
 .prevf label.mixlab,.prevf label.f,.prevf .doact{font-size:1.035em;text-transform:uppercase;letter-spacing:.06em;color:var(--label)}
@@ -426,6 +431,9 @@ function ledger(u){var T=u.transfer,S=u.settings;
     (T.withdrawals||[]).forEach(function(w){var a=+w.amount||0;if(a>0&&w.side){mv.push({t:w.t,from:w.side,to:"wallet",amount:a});mv.push({t:w.t,from:"wallet",to:"bank",amount:a})}});
     T.moves=mv}
   return T.moves}
+/* žádost o výběr na účet (transfer.payReq {t,amount}) čeká na potvrzení správce; částka je do té doby blokovaná v peněžence */
+function payReq(u){var r=u.transfer.payReq;return r&&+r.amount>0?r:null}
+function walletFree(u){var r=payReq(u);return Math.round((walletBal(u)-(r?+r.amount:0))*100)/100}
 function walletBal(u){var b=+u.settings.capital||0;ledger(u).forEach(function(m){var a=+m.amount||0;if(m.to==="wallet")b+=a;if(m.from==="wallet")b-=a});return Math.round(b*100)/100}
 function stats(u,side){
   var S=u.settings,T=u.transfer;
@@ -509,7 +517,7 @@ function render(){
 }
 /* Nápis XAU/USD zčervená, když má správce ve Správě účtů důležitou zprávu (chybějící obchody od aplikace
    nebo změnu nastavení od jiného uživatele). */
-function hasAlert(){var m=me();return !!(m&&m.isAdmin&&((gapInfo&&gapInfo.gaps&&gapInfo.gaps.length)||DB.users.some(newChange)))}
+function hasAlert(){var m=me();return !!(m&&m.isAdmin&&((gapInfo&&gapInfo.gaps&&gapInfo.gaps.length)||DB.users.some(newChange)||DB.users.some(payReq)))}
 function setAlert(){var t=document.querySelector(".scene:not(.authscene) .titleimg");if(t)t.classList.toggle("alert",hasAlert())}
 /* Nápis XAU/USD kreslený jako vektorový neon (ostrý v každé velikosti): rozmazaná záře, barevná linka a světlé jádro */
 /* Obrys písmen je předem převedený z písma Montserrat ExtraBold na jednu křivku bez překrývajících se tahů. */
@@ -782,20 +790,28 @@ function viewObch(u,side,st){
 function pairTile(k,a,b){return '<div class="tile pair"><div class="pc"><div class="k">'+k+'</div><div class="v">'+a+'</div></div><div class="pc r"><div class="k">Průměr</div><div class="v">'+b+'</div></div></div>'}
 function durTxt(ms){var U=function(n,j){return n+'<span class="un">'+j+'</span>'};var m=Math.round(ms/60000);if(m<60)return U(m,"min");var h=Math.floor(m/60);m%=60;if(h<24)return U(h,"h")+(m?" "+U(m,"min"):"");var d=Math.floor(h/24);h%=24;return U(d,"d")+(h?" "+U(h,"h"):"")}
 function moveTxt(m){var N={wallet:"peněženka",robot:"robot",manual:"manuál",bank:"účet"};return N[m.from]+" → "+N[m.to]}
+function bankRow(u){var r=payReq(u);
+  return '<label class="f">Částka pro převod na účet<input type="number" step="any" min="0" data-f="mvBank" placeholder="0,00 $"'+(r?' value="'+esc(String(r.amount))+'" disabled':'')+'></label>'+
+    '<div class="f doact"><span class="lbl">&nbsp;</span><button type="button" class="act'+(r?' go blink':'')+'" data-a="move" data-in="mvBank" data-from="wallet" data-to="bank" title="Z peněženky na bankovní účet">Proveď</button></div>'}
+function payInfo(u){var r=payReq(u),l=u.transfer.payLast;
+  if(r)return '<p class="payinfo wait">Čeká se na potvrzení výběru '+usd(+r.amount)+' od administrátora.</p>';
+  if(l&&l.status==="rej")return '<p class="payinfo rej">Výběr '+usd(+l.amount)+' ze dne '+dmy(new Date(l.t))+' administrátor zamítl.</p>';
+  if(l&&l.status==="ok")return '<p class="payinfo ok">Výběr '+usd(+l.amount)+' administrátor potvrdil '+dmy(new Date(l.done||l.t))+'.</p>';
+  return ''}
 function viewPrev(u,side,st){
   var T=u.transfer,wb=walletBal(u),nm=side==="robot"?"robotického":"manuálního";
   var list=ledger(u).filter(function(m){return !m.init&&(m.from===side||m.to===side||m.to==="bank")}).slice(-5).reverse();
   var row=function(lab,key,from,to,title){return '<label class="f">'+lab+'<input type="number" step="any" min="0" data-f="'+key+'" placeholder="0,00 $"></label>'+
     '<div class="f doact"><span class="lbl">&nbsp;</span><button type="button" class="act" data-a="move" data-in="'+key+'" data-from="'+from+'" data-to="'+to+'" title="'+title+'">Proveď</button></div>'};
   return '<form class="prevf" data-side="'+side+'" novalidate>'+
-   '<div class="walletbox"><div><span class="k">Peněženka</span><span class="v">'+usd(wb)+'</span></div><div class="r"><span class="k">V obchodování</span><span class="v">'+usd(st.current)+'</span></div></div>'+
+   '<div class="walletbox"><div><span class="k">Peněženka</span><span class="v">'+usd(wb)+'</span>'+(payReq(u)?'<span class="k">z toho čeká na výběr '+usd(+payReq(u).amount)+'</span>':'')+'</div><div class="r"><span class="k">V obchodování</span><span class="v">'+usd(st.current)+'</span></div></div>'+
    '<div class="grid2">'+
     '<label class="f">Stop loss %<input type="number" step="any" min="0" max="100" id="sl-'+side+'" data-f="'+(side==="robot"?"slRobot":"slManual")+'" value="'+esc((side==="robot"?T.slRobot:T.slManual)||"0")+'"></label>'+
     '<div class="f doact"><span class="lbl">&nbsp;</span><button class="act" data-a="saveprev">Uložit nastavení</button></div>'+
     row("Částka pro převod z peněženky","mvIn","wallet",side,"Z peněženky do "+nm+" obchodování")+
     row("Částka pro převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
-    row("Částka pro převod na účet","mvBank","wallet","bank","Z peněženky na bankovní účet")+
-   '</div>'+
+    bankRow(u)+
+   '</div>'+payInfo(u)+
    (list.length?'<ul class="wd">'+list.map(function(m){var neg=m.from===side||m.to==="bank";return '<li><span>'+dmy(new Date(m.t))+' · '+moveTxt(m)+'</span><span>'+usd(neg?-m.amount:+m.amount)+'</span></li>'}).join("")+'</ul>':'')+
    '</form>';
 }
@@ -891,8 +907,13 @@ app.addEventListener("click",function(e){
   if(a==="back"){viewId=null;return renderMain()}
   if(a==="move"){e.preventDefault();var u=viewed(),inp=t.closest("form").querySelector('[data-f="'+t.dataset.in+'"]'),amt=Math.round(+String(inp?inp.value:"").replace(",",".")*100)/100;
     if(!(amt>0)){toast("Zadejte částku pro převod.");if(inp)inp.focus();return}
-    var fr=t.dataset.from,to=t.dataset.to,avail=fr==="wallet"?walletBal(u):Math.floor(stats(u,fr).current*100)/100;
+    var fr=t.dataset.from,to=t.dataset.to;
+    if(to==="bank"&&payReq(u)){toast("Čeká se na potvrzení výběru "+usd(+payReq(u).amount)+" od administrátora.");return}
+    var avail=fr==="wallet"?walletFree(u):Math.floor(stats(u,fr).current*100)/100;
     if(amt>avail+1e-9){toast("Nedostatek prostředků – k dispozici "+usd(Math.max(0,avail))+".");if(inp)inp.focus();return}
+    /* výběr na účet od uživatele (ne správce) je jen žádost – provede se až po potvrzení správcem */
+    if(to==="bank"&&!me().isAdmin){u.transfer.payReq={t:new Date().toISOString(),amount:amt};u.transfer.payLast=null;persistTransfer(u);renderMain();
+      toast("Žádost o výběr "+usd(amt)+" odeslána – čeká se na potvrzení od administrátora.");return}
     var mv={t:new Date().toISOString(),from:fr,to:to,amount:amt};ledger(u).push(mv);
     /* převod, který provedl jiný uživatel než správce, uvidí správce ve Správě účtů */
     if(!me().isAdmin)u.transfer.lastChange={t:mv.t,kind:"move",from:fr,to:to,amount:amt};
@@ -912,7 +933,7 @@ function updDirty(){var T=viewed().transfer;
     var sl=f.querySelector('[data-f^="sl"]');
     var dirty=sl&&String(sl.value).trim()!==String(T[sl.dataset.f]||"0").trim();
     var sb=f.querySelector('[data-a="saveprev"]');if(sb)sb.classList.toggle("go",!!dirty);
-    f.querySelectorAll('[data-a="move"]').forEach(function(pb){var i=f.querySelector('[data-f="'+pb.dataset.in+'"]');pb.classList.toggle("go",!!(i&&+String(i.value).replace(",",".")>0))})})}
+    f.querySelectorAll('[data-a="move"]').forEach(function(pb){var i=f.querySelector('[data-f="'+pb.dataset.in+'"]');pb.classList.toggle("go",pb.classList.contains("blink")||!!(i&&+String(i.value).replace(",",".")>0))})})}
 app.addEventListener("input",function(e){if(e.target.closest&&e.target.closest(".prevf"))updDirty()});
 /* v záložce Převod Enter nic neukládá – ukládá se jen tlačítkem Uložit nastavení */
 app.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target.tagName==="INPUT"&&e.target.closest(".prevf")){e.preventDefault();e.target.blur()}});
@@ -945,6 +966,10 @@ function gapsHTML(){if(!gapInfo||!gapInfo.gaps||!gapInfo.gaps.length)return "";
   return '<div class="chgbox gapbox"><h4>Chybějící manuální obchody</h4><p class="hint">V datech chybí obchody za '+(gapInfo.gaps.length>1?'dny':'den')+' <b>'+gapInfo.gaps.map(function(d){var x=d.split("-");return +x[2]+". "+(+x[1])+". "+x[0]}).join(", ")+
   '</b> (Myfxbook při automatickém stahování vrací jen posledních cca 40 obchodů). Doplníš je tak, že na Myfxbooku stáhneš výpis účtu '+esc(gapInfo.account||"")+' jako CSV a nahraješ ho '+
   '<a href="https://github.com/Golden-Dave/Trading/upload/main/imports" target="_blank" rel="noopener">do složky imports na GitHubu</a> (Commit changes). Obchody se doplní do pár minut a automatické stahování běží dál.</p></div>'}
+function payHTML(){var l=DB.users.filter(payReq);if(!l.length)return "";
+  return '<div class="chgbox"><h4>Žádosti o výběr na účet</h4>'+l.map(function(u){var r=payReq(u),d=new Date(r.t);
+    return '<div class="chgrow"><span><b>'+esc(u.username)+'</b> žádá '+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+' o výběr <b>'+usd(+r.amount)+'</b> z peněženky na účet (v peněžence '+usd(walletBal(u))+').</span>'+
+    '<span class="chgbtns"><button class="chip" data-x="payok" data-id="'+u.id+'">Potvrdit výběr</button><button class="chip" data-x="payrej" data-id="'+u.id+'">Zamítnout</button></span></div>'}).join("")+'</div>'}
 function changesHTML(){var l=DB.users.filter(newChange);if(!l.length)return "";
   return '<div class="chgbox"><h4>Změny nastavení</h4>'+l.map(function(u){return '<div class="chgrow"><span>'+changeText(u)+'</span><button class="chip" data-x="ack" data-id="'+u.id+'">Beru na vědomí</button></div>'}).join("")+'</div>'}
 function renderAcct(){
@@ -1052,7 +1077,7 @@ function renderAdmin(){
   var m=me();if(!m||!m.isAdmin){closeOv();return}
   var sel=DB.users.find(function(u){return u.id===adminSel})||m;adminSel=sel.id;var S=sel.settings;
   ov.innerHTML='<div class="admin" role="dialog" aria-label="Správa účtů"><div class="row" style="justify-content:space-between"><h3>Správa účtů</h3><div class="row">'+acctLine(m)+'<button class="chip" data-x="pw">Změnit heslo</button><button class="chip" data-x="logout">Odhlásit</button><button class="chip" data-x="close">Zavřít</button></div></div>'+
-   gapsHTML()+changesHTML()+
+   gapsHTML()+payHTML()+changesHTML()+
    '<div class="agrid"><div><div class="ulist">'+DB.users.map(function(u){return '<button class="ubtn" data-x="sel" data-id="'+u.id+'" aria-current="'+(u.id===sel.id)+'"><b>'+esc(u.username)+(newChange(u)?' <span class="chg" title="Změnil nastavení převodu">●</span>':'')+'</b><small>'+(u.isAdmin?"správce · ":"")+(u.trades.robot.length+u.trades.manual.length)+' obchodů</small></button>'}).join("")+'</div>'+
    '<h4>Nový účet</h4><form id="fNew" class="ulist"><label class="f">Uživatelské jméno<input type="text" id="nU" autocomplete="off" required></label><label class="f">Heslo (min. 6 znaků)<input type="password" id="nP" autocomplete="new-password" minlength="6" required></label><button class="act">Založit účet</button></form>'+
    '<h4>Záloha dat</h4><div class="ulist"><button class="act ghost" data-x="export">Kopírovat zálohu</button><textarea id="bk" placeholder="Sem vložte zálohu pro obnovení"></textarea><button class="act ghost" data-x="import">Obnovit ze zálohy</button><p class="hint">Obnova přiřadí data podle uživatelského jména. Účty musí být založené předem.</p></div></div>'+
@@ -1098,6 +1123,12 @@ async function adminClick(e){
   if(x==="pw"){adminOpen=false;return renderPw()}
   if(x==="logout")return logout();
   if(x==="sel"){adminSel=b.dataset.id;return renderAdmin()}
+  if(x==="payok"||x==="payrej"){var pu=DB.users.find(function(u){return u.id===b.dataset.id}),r=pu&&payReq(pu);
+    if(r){var now=new Date().toISOString();
+      if(x==="payok"){if(+r.amount>walletBal(pu)+1e-9){toast("V peněžence uživatele je jen "+usd(walletBal(pu))+".");return}ledger(pu).push({t:now,from:"wallet",to:"bank",amount:+r.amount})}
+      pu.transfer.payLast={t:r.t,amount:+r.amount,status:x==="payok"?"ok":"rej",done:now};pu.transfer.payReq=null;persistTransfer(pu);
+      toast(x==="payok"?"Výběr "+usd(+r.amount)+" potvrzen.":"Výběr zamítnut.")}
+    renderAdmin();renderMain();return setAlert()}
   if(x==="ack"){var au=DB.users.find(function(u){return u.id===b.dataset.id});if(au&&au.transfer.lastChange){au.transfer.changeAck=au.transfer.lastChange.t;persistTransfer(au)}renderAdmin();return setAlert()}
   if(x==="view"){viewId=sel.id===me().id?null:sel.id;return closeOv()}
   if(x==="del")return arm(b,"del","Opravdu smazat "+sel.username+"?",async function(){
