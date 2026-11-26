@@ -688,7 +688,7 @@ function viewInv(u,side,st){
   var mb=st.manualBal,sd=new Date(st.start);
   return '<div class="tiles big">'+
    tile("Vklad",'<span class="vrow" title="Vyhodnocuje se od uvedeného data"><span>'+num(Math.round(st.base),0)+'<span class="un">$</span></span><span>'+dmyShort(new Date(st.start))+'</span></span>')+
-   tile("Stav investice",'<span class="'+cls(st.current-st.base)+'">'+u1(st.current,"$")+'</span>',[st.wd?"do peněženky "+usd(st.wd):""].filter(Boolean).join(" · "))+
+   tile("Stav investice",'<span class="'+cls(st.pnl)+'">'+u1(st.current,"$")+'</span>',[st.wd?"do peněženky "+usd(st.wd):""].filter(Boolean).join(" · "))+
    winTile(st)+
    tile('Zisk <span class="nc">PnL</span>','<span class="vrow"><span class="'+cls(st.pnl)+'">'+u1(st.pnl,"$")+'</span><span class="'+cls(st.pnl)+'">'+u1(st.base?st.pnl/st.base*100:NaN,"%")+'</span></span>')+
    (mb!=null?tile("Skutečný zůstatek (zadaný ručně)",usd(mb),"rozdíl proti výpočtu "+usd(mb-st.current,true),true):"")+
@@ -836,7 +836,7 @@ function viewPrev(u,side,st){
   return '<form class="prevf" data-side="'+side+'" novalidate>'+
    '<div class="tiles big pvtiles">'+
     tile("Peněženka",'<span>'+u1(wb,"$")+'</span>',payReq(u)?'z toho čeká na výběr '+usd(+payReq(u).amount):'')+
-    tile("Investice",'<span class="'+cls(st.current-st.base)+'">'+u1(st.current,"$")+'</span>')+
+    tile("Investice",'<span class="'+cls(st.pnl)+'">'+u1(st.current,"$")+'</span>')+
     mvField("Převod z peněženky","mvIn","wallet",side,"Z peněženky do "+nm+" obchodování")+
     bankRow(u)+
     mvField("Převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
