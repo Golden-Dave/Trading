@@ -232,6 +232,13 @@ label.mixlab{display:block;line-height:1.5;font-size:min(13px,1em)}
 @media (prefers-reduced-motion:reduce){.act.go.blink{animation-duration:2.4s}}
 .payinfo{margin:.5em 0 0;font-size:.85em;line-height:1.4}.payinfo.wait{color:#3dffa0}.payinfo.rej{color:var(--red,#ff5a6a)}.payinfo.ok{color:var(--muted)}
 .chgbtns{display:flex;gap:6px;flex-wrap:wrap}
+/* převody: dvě pole vedle sebe, výběr na účet pod nimi; tlačítko Proveď je uvnitř pole */
+.prevf .mvgrid{margin-top:1.6em;align-items:end}
+.prevf .mvgrid label.f{white-space:normal;line-height:1.2}
+.prevf .mvbank{grid-column:1/-1}
+.inbtn{position:relative;display:block}
+.inbtn input{width:100%;box-sizing:border-box;padding-right:3.3em!important}
+.prevf .inbtn .act{position:absolute;top:.3em;bottom:.3em;right:.3em;padding:0 .8em;font-size:1em;text-transform:none;letter-spacing:normal;display:flex;align-items:center}
 .walletbox .v{font-family:var(--f-mono);font-weight:700;font-size:1.15em;color:#fff;white-space:nowrap}
 /* Převod: texty a hodnoty ve stejné velikosti jako v záložce Investice */
 .prevf label.mixlab,.prevf label.f,.prevf .doact{font-size:1.035em;text-transform:uppercase;letter-spacing:.06em;color:var(--label)}
@@ -790,9 +797,11 @@ function viewObch(u,side,st){
 function pairTile(k,a,b){return '<div class="tile pair"><div class="pc"><div class="k">'+k+'</div><div class="v">'+a+'</div></div><div class="pc r"><div class="k">Průměr</div><div class="v">'+b+'</div></div></div>'}
 function durTxt(ms){var U=function(n,j){return n+'<span class="un">'+j+'</span>'};var m=Math.round(ms/60000);if(m<60)return U(m,"min");var h=Math.floor(m/60);m%=60;if(h<24)return U(h,"h")+(m?" "+U(m,"min"):"");var d=Math.floor(h/24);h%=24;return U(d,"d")+(h?" "+U(h,"h"):"")}
 function moveTxt(m){var N={wallet:"peněženka",robot:"robot",manual:"manuál",bank:"účet"};return N[m.from]+" → "+N[m.to]}
+/* pole s částkou převodu a tlačítkem Proveď uvnitř pole */
+function mvField(lab,key,from,to,title,cls,attrs){return '<label class="f mvf">'+lab+'<span class="inbtn"><input type="number" step="any" min="0" data-f="'+key+'" placeholder="0,00 $"'+(attrs||'')+'>'+
+  '<button type="button" class="act'+(cls||'')+'" data-a="move" data-in="'+key+'" data-from="'+from+'" data-to="'+to+'" title="'+title+'">Proveď</button></span></label>'}
 function bankRow(u){var r=payReq(u);
-  return '<label class="f">Částka pro převod na účet<input type="number" step="any" min="0" data-f="mvBank" placeholder="0,00 $"'+(r?' value="'+esc(String(r.amount))+'" disabled':'')+'></label>'+
-    '<div class="f doact"><span class="lbl">&nbsp;</span><button type="button" class="act'+(r?' go blink':'')+'" data-a="move" data-in="mvBank" data-from="wallet" data-to="bank" title="Z peněženky na bankovní účet">Proveď</button></div>'}
+  return mvField("Částka pro převod na účet","mvBank","wallet","bank","Z peněženky na bankovní účet",r?' go blink':'',r?' value="'+esc(String(r.amount))+'" disabled':'')}
 function payInfo(u){var r=payReq(u),l=u.transfer.payLast;
   if(r)return '<p class="payinfo wait">Čeká se na potvrzení výběru '+usd(+r.amount)+' od administrátora.</p>';
   if(l&&l.status==="rej")return '<p class="payinfo rej">Výběr '+usd(+l.amount)+' ze dne '+dmy(new Date(l.t))+' administrátor zamítl.</p>';
@@ -801,16 +810,15 @@ function payInfo(u){var r=payReq(u),l=u.transfer.payLast;
 function viewPrev(u,side,st){
   var T=u.transfer,wb=walletBal(u),nm=side==="robot"?"robotického":"manuálního";
   var list=ledger(u).filter(function(m){return !m.init&&(m.from===side||m.to===side||m.to==="bank")}).slice(-5).reverse();
-  var row=function(lab,key,from,to,title){return '<label class="f">'+lab+'<input type="number" step="any" min="0" data-f="'+key+'" placeholder="0,00 $"></label>'+
-    '<div class="f doact"><span class="lbl">&nbsp;</span><button type="button" class="act" data-a="move" data-in="'+key+'" data-from="'+from+'" data-to="'+to+'" title="'+title+'">Proveď</button></div>'};
   return '<form class="prevf" data-side="'+side+'" novalidate>'+
    '<div class="walletbox"><div><span class="k">Peněženka</span><span class="v">'+usd(wb)+'</span>'+(payReq(u)?'<span class="k">z toho čeká na výběr '+usd(+payReq(u).amount)+'</span>':'')+'</div><div class="r"><span class="k">V obchodování</span><span class="v">'+usd(st.current)+'</span></div></div>'+
    '<div class="grid2">'+
     '<label class="f">Stop loss %<input type="number" step="any" min="0" max="100" id="sl-'+side+'" data-f="'+(side==="robot"?"slRobot":"slManual")+'" value="'+esc((side==="robot"?T.slRobot:T.slManual)||"0")+'"></label>'+
     '<div class="f doact"><span class="lbl">&nbsp;</span><button class="act" data-a="saveprev">Uložit nastavení</button></div>'+
-    row("Částka pro převod z peněženky","mvIn","wallet",side,"Z peněženky do "+nm+" obchodování")+
-    row("Částka pro převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
-    bankRow(u)+
+   '</div><div class="grid2 mvgrid">'+
+    mvField("Částka pro převod z peněženky","mvIn","wallet",side,"Z peněženky do "+nm+" obchodování")+
+    mvField("Částka pro převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
+    '<div class="mvbank">'+bankRow(u)+'</div>'+
    '</div>'+payInfo(u)+
    (list.length?'<ul class="wd">'+list.map(function(m){var neg=m.from===side||m.to==="bank";return '<li><span>'+dmy(new Date(m.t))+' · '+moveTxt(m)+'</span><span>'+usd(neg?-m.amount:+m.amount)+'</span></li>'}).join("")+'</ul>':'')+
    '</form>';
