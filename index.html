@@ -113,7 +113,7 @@ button.src{background:none;border:0;border-bottom:1px dashed currentColor;paddin
 .tlt{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
 .tlt th{position:sticky;top:0;background:#04060f;text-align:right;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:8px 8px;border-bottom:1px solid var(--line)}
 .tlt td{text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06);font-family:var(--f-mono);white-space:nowrap}
-.tlt th:first-child,.tlt td:first-child,.tlt th:nth-child(2),.tlt td:nth-child(2),.tlt th:nth-child(3),.tlt td:nth-child(3){text-align:left}
+.tlt th:first-child,.tlt td:first-child,.tlt th:nth-child(2),.tlt td:nth-child(2),.tlt th:nth-child(3),.tlt td:nth-child(3),.tlt:not(.hist) th:nth-child(4),.tlt:not(.hist) td:nth-child(4){text-align:left}
 .tlt tr:hover td{background:rgba(255,255,255,.04)}
 .tlt tr.tlgap td{height:14px;padding:0;border-bottom:1px solid var(--line);background:none}
 .tlfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 18px 14px;font-size:12.5px;color:var(--muted)}
@@ -920,14 +920,16 @@ function renderList(){
   var side=tlState.side,st=stats(u,side),list=st.trades.slice().reverse(),shown=list.slice(0,tlState.n);
   var sd=new Date(st.start);
   var lastDay="";
-  var rows=shown.map(function(t){var d=new Date(t.t),dk=dmy(d),gap=lastDay&&dk!==lastDay?'<tr class="tlgap"><td colspan="6"></td></tr>':'',od=t.o?new Date(t.o):null;lastDay=dk;
-    return gap+'<tr><td>'+(od?dmy(od)+' '+pad(od.getHours())+':'+pad(od.getMinutes()):'—')+'</td><td>'+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+'</td><td>'+(t.side==="sell"?"Sell":"Buy")+(t.sym?' · '+esc(t.sym):'')+'</td>'+(t.sym?'<td>—</td>':'<td>'+num(+t.lots||0,2)+'</td>')+(function(){var pv=isFinite(t.pct)?t.pct*(t.f==null?1:t.f):NaN;return '<td class="'+cls(pv)+'">'+(isFinite(pv)?pct(pv,true):'—')+'</td>'})()+'<td class="'+cls(t.adj)+'">'+usd(t.adj,true)+'</td></tr>'}).join("");
+  var rows=shown.map(function(t){var d=new Date(t.t),dk=dmy(d),gap=lastDay&&dk!==lastDay?'<tr class="tlgap"><td colspan="7"></td></tr>':'',od=t.o?new Date(t.o):null;lastDay=dk;
+    /* Datum = den zavření; Otevřeno a Zavřeno jen čas (u obchodu otevřeného v jiný den je u času otevření i datum) */
+    var hm=function(x){return pad(x.getHours())+':'+pad(x.getMinutes())};
+    return gap+'<tr><td>'+dk+'</td><td>'+(od?(dmy(od)!==dk?od.getDate()+'.'+(od.getMonth()+1)+'. ':'')+hm(od):'—')+'</td><td>'+hm(d)+'</td><td>'+(t.side==="sell"?"Sell":"Buy")+(t.sym?' · '+esc(t.sym):'')+'</td>'+(t.sym?'<td>—</td>':'<td>'+num(+t.lots||0,2)+'</td>')+(function(){var pv=isFinite(t.pct)?t.pct*(t.f==null?1:t.f):NaN;return '<td class="'+cls(pv)+'">'+(isFinite(pv)?pct(pv,true):'—')+'</td>'})()+'<td class="'+cls(t.adj)+'">'+usd(t.adj,true)+'</td></tr>'}).join("");
   if(!tlEl){tlEl=document.createElement("div");tlEl.className="tl";document.body.appendChild(tlEl);
     tlEl.addEventListener("click",function(e){if(e.target===tlEl||e.target.closest("[data-tl=close]"))return closeList();if(e.target.closest("[data-tl=more]")){tlState.n+=500;renderList()}});
     document.addEventListener("keydown",tlKey)}
   tlEl.innerHTML='<div class="tlbox '+side+'" role="dialog" aria-modal="true" aria-label="Výpis obchodů"><div class="tlhead"><h3>Výpis '+(side==="robot"?"robotického":"manuálního")+' obchodování</h3><button type="button" class="tlx" data-tl="close" aria-label="Zavřít">×</button></div>'+
    '<div class="tlsum"><span>Obchodů <b>'+list.length+'</b></span><span>Ziskových <b>'+st.wins+'</b></span><span>Ztrátových <b>'+st.losses+'</b></span><span>PnL <b class="'+cls(st.pnl)+'">'+usd(st.pnl,true)+'</b></span><span>Od <b>'+dmy(sd)+'</b></span></div>'+
-   (list.length?'<div class="tlscroll"><table class="tlt"><thead><tr><th>Otevřeno</th><th>Zavřeno</th><th>Směr</th><th>Loty</th><th>%</th><th>Zisk</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="tlscroll"><div class="empty">Od nastaveného data zatím nejsou žádné obchody.</div></div>')+
+   (list.length?'<div class="tlscroll"><table class="tlt"><thead><tr><th>Datum</th><th>Otevřeno</th><th>Zavřeno</th><th>Směr</th><th>Loty</th><th>%</th><th>Zisk</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="tlscroll"><div class="empty">Od nastaveného data zatím nejsou žádné obchody.</div></div>')+
    '<div class="tlfoot"><span>'+(shown.length<list.length?'Zobrazeno '+shown.length+' z '+list.length+'.':'')+'</span>'+
    (shown.length<list.length?'<button type="button" class="act ghost" data-tl="more">Zobrazit další</button>':'')+'<button type="button" class="act" data-tl="close">Zavřít</button></div></div>';
   var x=tlEl.querySelector(".tlx");if(x)x.focus();
