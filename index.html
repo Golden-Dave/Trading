@@ -235,7 +235,10 @@ label.mixlab{display:block;line-height:1.5;font-size:min(13px,1em)}
 /* převody: dvě pole vedle sebe, výběr na účet pod nimi; tlačítko Proveď je uvnitř pole */
 .prevf .mvgrid{margin-top:1.6em;align-items:end}
 .prevf .mvgrid label.f{white-space:normal;line-height:1.2}
-.prevf .mvbank{grid-column:1/-1}
+.tlt tr.tlpend td{color:#3dffa0}
+.tlt.hist td{white-space:normal;vertical-align:top}.tlt.hist td:nth-child(2){min-width:9em}.tlt.hist td:nth-child(3),.tlt.hist td:nth-child(4){white-space:nowrap;text-align:right}
+.tlt.hist th:nth-child(3),.tlt.hist th:nth-child(4){text-align:right}
+@media (max-width:520px){.tlt.hist{font-size:.8em}.tlt.hist td:nth-child(2){min-width:6.5em}.tlt.hist th,.tlt.hist td{padding-left:.35em;padding-right:.35em}}
 .inbtn{position:relative;display:block}
 .inbtn input{width:100%;box-sizing:border-box;padding-right:3.3em!important}
 .prevf .inbtn .act{position:absolute;top:.3em;bottom:.3em;right:.3em;padding:0 .8em;font-size:1em;text-transform:none;letter-spacing:normal;display:flex;align-items:center}
@@ -809,7 +812,6 @@ function payInfo(u){var r=payReq(u),l=u.transfer.payLast;
   return ''}
 function viewPrev(u,side,st){
   var T=u.transfer,wb=walletBal(u),nm=side==="robot"?"robotického":"manuálního";
-  var list=ledger(u).filter(function(m){return !m.init&&(m.from===side||m.to===side||m.to==="bank")}).slice(-5).reverse();
   return '<form class="prevf" data-side="'+side+'" novalidate>'+
    '<div class="walletbox"><div><span class="k">Peněženka</span><span class="v">'+usd(wb)+'</span>'+(payReq(u)?'<span class="k">z toho čeká na výběr '+usd(+payReq(u).amount)+'</span>':'')+'</div><div class="r"><span class="k">V obchodování</span><span class="v">'+usd(st.current)+'</span></div></div>'+
    '<div class="grid2">'+
@@ -818,9 +820,9 @@ function viewPrev(u,side,st){
    '</div><div class="grid2 mvgrid">'+
     mvField("Převod z peněženky","mvIn","wallet",side,"Z peněženky do "+nm+" obchodování")+
     mvField("Převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
-    '<div class="mvbank">'+bankRow(u)+'</div>'+
+    bankRow(u)+
+    '<div class="f doact"><span class="lbl">&nbsp;</span><button type="button" class="act" data-a="hist" data-side="'+side+'">HISTORIE</button></div>'+
    '</div>'+payInfo(u)+
-   (list.length?'<ul class="wd">'+list.map(function(m){var neg=m.from===side||m.to==="bank";return '<li><span>'+dmy(new Date(m.t))+' · '+moveTxt(m)+'</span><span>'+usd(neg?-m.amount:+m.amount)+'</span></li>'}).join("")+'</ul>':'')+
    '</form>';
 }
 function mixStyle(rp){rp=+rp;
@@ -882,8 +884,31 @@ function slHint(T,cap){
 var tlState=null,tlEl=null;
 function closeList(){tlState=null;if(tlEl){tlEl.remove();tlEl=null}document.removeEventListener("keydown",tlKey)}
 function tlKey(e){if(e.key==="Escape")closeList()}
+/* Historie převodů (peněženka, stánky, účet) – okno ve stejném stylu jako výpis obchodů */
+function renderHist(){
+  if(!tlState||!tlState.hist)return;var u=viewed();if(!u)return closeList();
+  var side=tlState.side,S=u.settings,start=new Date(S.start),N={wallet:"Peněženka",robot:"Robotické",manual:"Manuální",bank:"Účet"};
+  var ev=[{t:start.getTime(),txt:"Počáteční vklad",from:"",to:"wallet",amount:+S.capital||0}];
+  ledger(u).forEach(function(m){ev.push({t:m.init?start.getTime():new Date(m.t).getTime(),txt:m.init?"Počáteční rozdělení":"",from:m.from,to:m.to,amount:+m.amount||0})});
+  ev.sort(function(a,b){return a.t-b.t});
+  var w=0,out=0;ev.forEach(function(e){if(e.to==="wallet")w+=e.amount;if(e.from==="wallet")w-=e.amount;if(e.to==="bank")out+=e.amount;e.w=w});
+  var r=payReq(u),l=u.transfer.payLast,extra=[];
+  if(r)extra.push({t:new Date(r.t).getTime(),from:"wallet",to:"bank",amount:+r.amount,state:"čeká na potvrzení"});
+  if(l&&l.status==="rej")extra.push({t:new Date(l.t).getTime(),from:"wallet",to:"bank",amount:+l.amount,state:"zamítnuto"});
+  var fmt=function(t){var d=new Date(t);return dmyShort(d)+'<br>'+pad(d.getHours())+':'+pad(d.getMinutes())};
+  var rows=extra.concat(ev.slice().reverse()).map(function(e){var dir=e.from?N[e.from]+' → '+N[e.to]:'→ '+N[e.to];
+    return '<tr'+(e.state?' class="tlpend"':'')+'><td>'+fmt(e.t)+'</td><td>'+(e.txt?esc(e.txt)+' · ':'')+dir+(e.state?' · <b>'+e.state+'</b>':'')+'</td><td class="'+(e.to==="bank"?'neg':'pos')+'">'+usd(e.to==="bank"?-e.amount:e.amount)+'</td><td>'+(e.state?'—':usd(e.w))+'</td></tr>'}).join("");
+  if(!tlEl){tlEl=document.createElement("div");tlEl.className="tl";document.body.appendChild(tlEl);
+    tlEl.addEventListener("click",function(e){if(e.target===tlEl||e.target.closest("[data-tl=close]"))return closeList();if(e.target.closest("[data-tl=more]")){tlState.n+=500;renderList()}});
+    document.addEventListener("keydown",tlKey)}
+  tlEl.innerHTML='<div class="tlbox '+side+'" role="dialog" aria-modal="true" aria-label="Historie převodů"><div class="tlhead"><h3>Historie převodů</h3><button type="button" class="tlx" data-tl="close" aria-label="Zavřít">×</button></div>'+
+   '<div class="tlsum"><span>Peněženka <b>'+usd(walletBal(u))+'</b></span><span>Robotické <b>'+usd(stats(u,"robot").current)+'</b></span><span>Manuální <b>'+usd(stats(u,"manual").current)+'</b></span><span>Na účet celkem <b>'+usd(out)+'</b></span></div>'+
+   '<div class="tlscroll"><table class="tlt hist"><thead><tr><th>Datum</th><th>Převod</th><th>Částka</th><th>Peněženka</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+   '<div class="tlfoot"><span></span><button type="button" class="act" data-tl="close">Zavřít</button></div></div>';
+  var x=tlEl.querySelector(".tlx");if(x)x.focus();
+}
 function renderList(){
-  if(!tlState)return;var u=viewed();if(!u)return closeList();
+  if(!tlState)return;if(tlState.hist)return renderHist();var u=viewed();if(!u)return closeList();
   var side=tlState.side,st=stats(u,side),list=st.trades.slice().reverse(),shown=list.slice(0,tlState.n);
   var sd=new Date(st.start);
   var lastDay="";
@@ -907,6 +932,7 @@ app.addEventListener("click",function(e){
   if(t.dataset.tab){ui[t.dataset.side].tab=t.dataset.tab;saveUi();return renderStand(t.dataset.side)}
   if(t.dataset.k){ui[t.dataset.side][t.dataset.k]=t.dataset.v;saveUi();return renderStand(t.dataset.side)}
   if(a==="logout")return logout();
+  if(a==="hist"){tlState={hist:true,side:t.dataset.side};return renderHist()}
   if(a==="list"){tlState={side:t.dataset.side,n:200};return renderList()}
   if(a==="pw")return renderPw();
   if(a==="char"){var on=!knightOn(t.dataset.side);knights[t.dataset.side]=on;try{localStorage.setItem(KNIGHT_KEY,JSON.stringify(knights))}catch(e){}var st=t.closest(".stand");if(st)st.classList.toggle("knight",on);return}
