@@ -836,7 +836,7 @@ function viewPrev(u,side,st){
   return '<form class="prevf" data-side="'+side+'" novalidate>'+
    '<div class="tiles big pvtiles">'+
     tile("Peněženka",'<span>'+u1(wb,"$")+'</span>',payReq(u)?'z toho čeká na výběr '+usd(+payReq(u).amount):'')+
-    tile("Investice",'<span>'+u1(st.current,"$")+'</span>')+
+    tile("Investice",'<span class="'+cls(st.current-st.base)+'">'+u1(st.current,"$")+'</span>')+
     mvField("Převod z peněženky","mvIn","wallet",side,"Z peněženky do "+nm+" obchodování")+
     bankRow(u)+
     mvField("Převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
