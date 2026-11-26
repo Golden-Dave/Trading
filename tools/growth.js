@@ -1,7 +1,7 @@
 // Spouští se v prohlížeči na libovolné stránce www.myfxbook.com.
 // Stáhne veřejnou křivku růstu (Growth, kumulativní % po dnech, bez vlivu vkladů a výběrů)
 // pro účet ACCOUNT_ID a vrátí text: "GROWTH <počet> SUM <kontrolní součet>" a pak řádky "YYYY-MM-DD|growth%".
-// ACCOUNT_ID nahraďte číslem účtu (12034345 robot, 12329555 manuál).
+// ACCOUNT_ID nahraďte číslem účtu (12034345 robot, 12335052 manuál).
 (async (id = ACCOUNT_ID) => {
   const u = '/private/charts.json?startDate=2026-01-01%2000:00&endDate=2099-12-31%2023:59&invitation=&showLots=true&showPips=false&showChange=false&showSymbolPips=true&showMain=true&magicNumbers=&symbols=&tags=&days=1,5,2,6,3,7,4&hours=0,4,8,12,16,20,1,5,9,13,17,21,2,6,10,14,18,22,3,7,11,15,19,23&buySell=0,1,6,16&yieldStart=&yieldEnd=&takeProfitStart=&takeProfitEnd=&stopLoss=&stopLossEnd=&sizingStart=&sizingEnd=&selectedTime=1&pipsStart=&pipsEnd=&chartType=1&period=6&l=s&accountOid=' + id + '&rand=' + Math.random();
   let j;
