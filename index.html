@@ -241,7 +241,10 @@ label.mixlab{display:block;line-height:1.5;font-size:min(13px,1em)}
 /* převody ve stylu dlaždic Statistiky: popisek a částka vlevo, tlačítko Proveď vpravo */
 .prevf .pvtiles .tile.pvf{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:.25em .6em;padding:.6em .7em .6em .95em;cursor:text}
 .prevf .pvf .k{grid-column:1/-1;white-space:normal;line-height:1.2;align-self:start}
-.prevf .pvf input.v{display:block;width:100%;min-width:0;box-sizing:border-box;background:none!important;border:0!important;box-shadow:none!important;outline:none;color:#fff;
+.prevf .pvf .pvv{display:flex;align-items:baseline;min-width:0;overflow:hidden}
+@media (max-width:520px){.prevf .pvf input.v,.prevf .pvf .pvv .un{font-size:1.4em!important}}
+.prevf .pvf .pvv .un{font-family:var(--f-mono);font-weight:700;font-size:1.65em;line-height:1.15;color:#fff;margin-left:.3ch;flex:0 0 auto}
+.prevf .pvf input.v{display:block;width:5em;max-width:100%;flex:0 1 auto;min-width:0;box-sizing:border-box;background:none!important;border:0!important;box-shadow:none!important;outline:none;color:#fff;
   font-family:var(--f-mono);font-weight:700;font-size:1.65em;line-height:1.15;padding:0 0 0 .55em!important;margin:0;-moz-appearance:textfield;appearance:textfield}
 .prevf .pvf input.v::-webkit-outer-spin-button,.prevf .pvf input.v::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .prevf .pvf input.v::placeholder{color:rgba(255,255,255,.28)}
@@ -819,7 +822,7 @@ function pairTile(k,a,b){return '<div class="tile pair"><div class="pc"><div cla
 function durTxt(ms){var U=function(n,j){return n+'<span class="un">'+j+'</span>'};var m=Math.round(ms/60000);if(m<60)return U(m,"min");var h=Math.floor(m/60);m%=60;if(h<24)return U(h,"h")+(m?" "+U(m,"min"):"");var d=Math.floor(h/24);h%=24;return U(d,"d")+(h?" "+U(h,"h"):"")}
 function moveTxt(m){var N={wallet:"peněženka",robot:"robot",manual:"manuál",bank:"účet"};return N[m.from]+" → "+N[m.to]}
 /* pole s částkou převodu a tlačítkem Proveď uvnitř pole */
-function mvField(lab,key,from,to,title,cls,attrs){return '<label class="tile pvf"><span class="k">'+lab+'</span><input class="v" type="number" step="any" min="0" data-f="'+key+'" placeholder="0,00"'+(attrs||'')+'>'+
+function mvField(lab,key,from,to,title,cls,attrs){return '<label class="tile pvf"><span class="k">'+lab+'</span><span class="pvv"><input class="v" type="number" step="any" min="0" data-f="'+key+'" placeholder="0,00"'+(attrs||'')+'><span class="v un">$</span></span>'+
   '<button type="button" class="act'+(cls||'')+'" data-a="move" data-in="'+key+'" data-from="'+from+'" data-to="'+to+'" title="'+title+'">Proveď</button></label>'}
 function bankRow(u){var r=payReq(u);
   return mvField("Převod na účet","mvBank","wallet","bank","Z peněženky na bankovní účet",r?' go blink':'',r?' value="'+esc(String(r.amount))+'" disabled':'')}
@@ -887,7 +890,7 @@ function lockStands(){
     ui[side].tab=keep;box.remove();
     if(mx>0)f.style.minHeight=Math.ceil(mx)+"px"});
 }
-function placeAllMix(){lockStands();fitRows();document.querySelectorAll("input.mix").forEach(placeMix);initCharts()}
+function placeAllMix(){fitAllPv();lockStands();fitRows();document.querySelectorAll("input.mix").forEach(placeMix);initCharts()}
 window.addEventListener("resize",placeAllMix);
 
 /* ---------- trade list window ---------- */
@@ -970,7 +973,11 @@ app.addEventListener("submit",function(e){if(e.target.closest(".prevf"))e.preven
 function updDirty(){var T=viewed().transfer;
   app.querySelectorAll(".prevf").forEach(function(f){
     f.querySelectorAll('[data-a="move"]').forEach(function(pb){var i=f.querySelector('[data-f="'+pb.dataset.in+'"]');pb.classList.toggle("go",pb.classList.contains("blink")||!!(i&&+String(i.value).replace(",",".")>0))})})}
-app.addEventListener("input",function(e){if(e.target.closest&&e.target.closest(".prevf"))updDirty()});
+app.addEventListener("input",function(e){if(e.target.closest&&e.target.closest(".prevf")){fitPv(e.target);updDirty()}});
+/* políčko částky v Převodu je široké jen podle obsahu, aby jednotka $ stála hned za číslem */
+function fitPv(el){if(!el||!el.matches||!el.matches(".pvf input.v"))return;var cs=getComputedStyle(el),c=fitPv.c||(fitPv.c=document.createElement("canvas").getContext("2d"));
+  c.font=cs.fontStyle+" "+cs.fontWeight+" "+cs.fontSize+" "+cs.fontFamily;el.style.width=Math.ceil(c.measureText(el.value||el.placeholder||"").width+parseFloat(cs.paddingLeft||0)+3)+"px"}
+function fitAllPv(){app.querySelectorAll(".pvf input.v").forEach(fitPv)}
 /* v záložce Převod Enter nic neprovádí – převod jen tlačítkem Proveď */
 app.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target.tagName==="INPUT"&&e.target.closest(".prevf")){e.preventDefault();e.target.blur()}});
 app.addEventListener("input",function(e){if(e.target.classList&&e.target.classList.contains("mix")){
