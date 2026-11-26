@@ -233,7 +233,9 @@ label.mixlab{display:block;line-height:1.5;font-size:min(13px,1em)}
 .payinfo{margin:.5em 0 0;font-size:.85em;line-height:1.4}.payinfo.wait{color:#3dffa0}.payinfo.rej{color:var(--red,#ff5a6a)}.payinfo.ok{color:var(--muted)}
 .chgbtns{display:flex;gap:6px;flex-wrap:wrap}
 /* převody: dvě pole vedle sebe, výběr na účet pod nimi; tlačítko Proveď je uvnitř pole */
-.prevf .mvgrid{margin-top:1.6em;align-items:end}
+.prevf .mvgrid{margin-top:1.2em;align-items:end}
+.prevf .pvtiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+.prevf .pvtiles .tile{min-height:0;padding:.75em .95em}
 .prevf .mvgrid label.f{white-space:normal;line-height:1.2}
 .tlt tr.tlpend td{color:#3dffa0}
 .tlt.hist td{white-space:normal;vertical-align:top}.tlt.hist td:nth-child(2){min-width:9em}.tlt.hist td:nth-child(3),.tlt.hist td:nth-child(4){white-space:nowrap;text-align:right}
@@ -814,11 +816,14 @@ function payInfo(u){var r=payReq(u),l=u.transfer.payLast;
 function viewPrev(u,side,st){
   var T=u.transfer,wb=walletBal(u),nm=side==="robot"?"robotického":"manuálního";
   return '<form class="prevf" data-side="'+side+'" novalidate>'+
-   '<div class="walletbox"><div><span class="k">Peněženka</span><span class="v">'+usd(wb)+'</span>'+(payReq(u)?'<span class="k">z toho čeká na výběr '+usd(+payReq(u).amount)+'</span>':'')+'</div><div class="r"><span class="k">V obchodování</span><span class="v">'+usd(st.current)+'</span></div></div>'+
+   '<div class="tiles big pvtiles">'+
+    tile("Peněženka",'<span>'+u1(wb,"$")+'</span>',payReq(u)?'z toho čeká na výběr '+usd(+payReq(u).amount):'')+
+    tile("Investice",'<span>'+u1(st.current,"$")+'</span>')+
+   '</div>'+
    '<div class="grid2 mvgrid">'+
     mvField("Převod z peněženky","mvIn","wallet",side,"Z peněženky do "+nm+" obchodování")+
-    mvField("Převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
     bankRow(u)+
+    mvField("Převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
     '<div class="f doact"><span class="lbl">&nbsp;</span><button type="button" class="act" data-a="hist" data-side="'+side+'">HISTORIE</button></div>'+
    '</div>'+payInfo(u)+
    '</form>';
