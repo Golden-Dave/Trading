@@ -601,10 +601,10 @@ function renderLogin(){
     try{await auth.signInWithEmailAndPassword(emailOf(n),val("lP"))}catch(err){busy(e.target,false);setErr("lErr",errText(err))}
   });
 }
-/* Jednorázové vyčištění manuálních obchodů na všech účtech (žádost správce 24. 11. 2026): smažou se uložené obchody
+/* Jednorázové vyčištění manuálních obchodů na všech účtech (žádosti správce 24. 11. a 27. 11. 2026 – při další žádosti stačí změnit datum v RESET_MANUAL): smažou se uložené obchody
    i příznak ručně nahraného souboru, odkaz se vrátí na výchozí soubor v repozitáři a data se načtou znovu.
    Provede se jednou při přihlášení správce; značka RESET_MANUAL se uloží do jeho nastavení. */
-var RESET_MANUAL="2026-11-24";
+var RESET_MANUAL="2026-11-27";
 async function resetManual(adm){
   await Promise.all(DB.users.map(function(u){
     u.trades.manual=[];delete u.settings.manualSrc;u.settings.manualUrl=DEF_URL.manual;

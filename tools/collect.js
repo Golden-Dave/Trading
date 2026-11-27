@@ -1,6 +1,6 @@
 // Spouští se v prohlížeči na stránce veřejného výpisu Myfxbook, např.
 //   https://www.myfxbook.com/statements/12034345/statement.html  (robot)
-//   https://www.myfxbook.com/statements/12335052/statement.html  (manuál)
+//   https://www.myfxbook.com/statements/12336480/statement.html  (manuál)
 // Stáhne nejnovější stránky uzavřených obchodů (výchozí 1 stránka = 100 obchodů)
 // a vrátí kompaktní text: první řádek "PAGES <n> COUNT <počet> SUM <kontrolní součet>",
 // pak jeden obchod na řádek: otevření|zavření (yymmddhhmm)|b/s|loty*100|pipy*10
