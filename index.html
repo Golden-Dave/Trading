@@ -964,7 +964,8 @@ app.addEventListener("click",function(e){
   if(a==="move"){e.preventDefault();var u=viewed(),inp=t.closest("form").querySelector('[data-f="'+t.dataset.in+'"]'),amt=Math.round(+String(inp?inp.value:"").replace(",",".")*100)/100;
     if(!(amt>0)){toast("Zadejte částku pro převod.");if(inp)inp.focus();return}
     var fr=t.dataset.from,to=t.dataset.to;
-    var pr=reqOf(u,fr,to);if(pr){toast("Čeká se na potvrzení od administrátora: "+REQ_TXT[to]+" "+usd(+pr.amount)+".");return}
+    /* opětovné kliknutí na blikající Proveď žádost zruší a pole vynuluje */
+    var pr=reqOf(u,fr,to);if(pr){reqs(u).splice(reqs(u).indexOf(pr),1);persistTransfer(u);renderMain();toast("Požadavek byl zrušen ("+REQ_TXT[to]+" "+usd(+pr.amount)+").");return}
     var avail=fr==="wallet"?walletFree(u):Math.floor((stats(u,fr).current-reserved(u,fr))*100)/100;
     if(amt>avail+1e-9){toast("Nedostatek prostředků – k dispozici "+usd(Math.max(0,avail))+".");if(inp)inp.focus();return}
     /* převod od uživatele (ne správce) je jen žádost – provede a přepočítá se až po potvrzení správcem */
