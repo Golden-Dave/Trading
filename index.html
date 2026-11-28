@@ -388,6 +388,10 @@ function viewed(){var m=me();if(m&&m.isAdmin&&viewId){var v=DB.users.find(functi
 function userRef(id){return fs.collection("users").doc(id)}
 function fail(e){console.error(e);toast("Uložení se nezdařilo: "+errText(e))}
 function persistSettings(u){if(DEMO)return Promise.resolve();return userRef(u.id).update({settings:u.settings}).catch(fail)}
+/* před potvrzením žádosti správcem načte převody uživatele znovu z databáze (uživatel ji mohl mezitím zrušit) */
+async function freshTransfer(u){if(DEMO)return u.transfer;var doc=await userRef(u.id).get(),d=doc.exists?doc.data():{},df=defaults();
+  var t=Object.assign(df.transfer,d.transfer&&Array.isArray(d.transfer.moves)?{}:{moves:null},d.transfer||{});
+  ["slRobot","slManual","tpRobot","tpManual","slUnit"].forEach(function(k){delete t[k]});u.transfer=t;return t}
 function persistTransfer(u){if(DEMO)return Promise.resolve();return userRef(u.id).update({transfer:u.transfer}).catch(fail)}
 function persistTrades(u,side){if(DEMO)return Promise.resolve();return userRef(u.id).collection("trades").doc(side).set({items:u.trades[side]}).catch(fail)}
 /* účet bez odkazu (založený dřív s prázdnými odkazy) bere data z výchozích odkazů */
@@ -1174,15 +1178,21 @@ async function adminClick(e){
   if(x==="pw"){adminOpen=false;return renderPw()}
   if(x==="logout")return logout();
   if(x==="sel"){adminSel=b.dataset.id;return renderAdmin()}
-  if(x==="payok"||x==="payrej"){var pu=DB.users.find(function(u){return u.id===b.dataset.id}),ri=+b.dataset.i,r=pu&&reqs(pu)[ri];
-    if(r){var now=new Date().toISOString(),amt=+r.amount;
+  if(x==="payok"||x==="payrej"){var pu=DB.users.find(function(u){return u.id===b.dataset.id}),r0=pu&&reqs(pu)[+b.dataset.i];
+    if(!r0){renderAdmin();return setAlert()}
+    b.disabled=true;
+    freshTransfer(pu).then(function(){
+      var list=reqs(pu),ri=list.findIndex(function(r){return r.t===r0.t&&r.from===r0.from&&r.to===r0.to&&+r.amount===+r0.amount}),r=list[ri];
+      if(!r){toast("Požadavek už neplatí – uživatel "+pu.username+" ho mezitím zrušil nebo změnil. Seznam žádostí je aktualizovaný.");renderAdmin();renderMain();return setAlert()}
+      var now=new Date().toISOString(),amt=+r.amount;
       if(x==="payok"){var av=r.from==="wallet"?walletBal(pu):stats(pu,r.from).current;
-        if(amt>av+1e-9){toast((r.from==="wallet"?"V peněžence uživatele je jen ":"V obchodování uživatele je jen ")+usd(av)+".");return}
+        if(amt>av+1e-9){toast((r.from==="wallet"?"V peněžence uživatele je jen ":"V obchodování uživatele je jen ")+usd(av)+".");renderAdmin();return}
         /* převod se provede k času potvrzení – od něj se počítá s novými zůstatky */
         ledger(pu).push({t:now,from:r.from,to:r.to,amount:amt})}
-      pu.transfer.reqLast={t:r.t,from:r.from,to:r.to,amount:amt,status:x==="payok"?"ok":"rej",done:now};reqs(pu).splice(ri,1);persistTransfer(pu);
-      toast(x==="payok"?"Převod "+usd(amt)+" potvrzen ("+moveTxt(r)+").":"Žádost zamítnuta.")}
-    renderAdmin();renderMain();return setAlert()}
+      pu.transfer.reqLast={t:r.t,from:r.from,to:r.to,amount:amt,status:x==="payok"?"ok":"rej",done:now};list.splice(ri,1);persistTransfer(pu);
+      toast(x==="payok"?"Převod "+usd(amt)+" potvrzen ("+moveTxt(r)+").":"Žádost zamítnuta.");
+      renderAdmin();renderMain();setAlert()}).catch(function(e){fail(e);b.disabled=false});
+    return}
   if(x==="ack"){var au=DB.users.find(function(u){return u.id===b.dataset.id});if(au&&au.transfer.lastChange){au.transfer.changeAck=au.transfer.lastChange.t;persistTransfer(au)}renderAdmin();return setAlert()}
   if(x==="view"){viewId=sel.id===me().id?null:sel.id;return closeOv()}
   if(x==="del")return arm(b,"del","Opravdu smazat "+sel.username+"?",async function(){
