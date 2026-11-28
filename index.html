@@ -461,9 +461,17 @@ function ledger(u){var T=u.transfer,S=u.settings;
     (T.withdrawals||[]).forEach(function(w){var a=+w.amount||0;if(a>0&&w.side){mv.push({t:w.t,from:w.side,to:"wallet",amount:a});mv.push({t:w.t,from:"wallet",to:"bank",amount:a})}});
     T.moves=mv}
   return T.moves}
-/* žádost o výběr na účet (transfer.payReq {t,amount}) čeká na potvrzení správce; částka je do té doby blokovaná v peněžence */
-function payReq(u){var r=u.transfer.payReq;return r&&+r.amount>0?r:null}
-function walletFree(u){var r=payReq(u);return Math.round((walletBal(u)-(r?+r.amount:0))*100)/100}
+/* Žádosti o převod (transfer.reqs [{t,from,to,amount}]): převody uživatele (z peněženky, do peněženky, na účet) čekají
+   na potvrzení správce; provedou se až potvrzením (k času potvrzení). Částka je do té doby blokovaná u zdroje.
+   Výsledek poslední žádosti je v transfer.reqLast. Starší jediná žádost o výběr (payReq) se převede. */
+function reqs(u){var T=u.transfer;if(!Array.isArray(T.reqs)){T.reqs=[];if(T.payReq&&+T.payReq.amount>0)T.reqs.push({t:T.payReq.t,from:"wallet",to:"bank",amount:+T.payReq.amount});
+    if(T.payLast&&!T.reqLast)T.reqLast=Object.assign({from:"wallet",to:"bank"},T.payLast);delete T.payReq;delete T.payLast}
+  return T.reqs}
+function reqOf(u,from,to){return reqs(u).find(function(r){return r.from===from&&r.to===to})||null}
+function payReq(u){return reqs(u).length?reqs(u)[0]:null}
+function reserved(u,src){return reqs(u).reduce(function(a,r){return r.from===src?a+(+r.amount||0):a},0)}
+function walletFree(u){return Math.round((walletBal(u)-reserved(u,"wallet"))*100)/100}
+var REQ_TXT={bank:"výběr na účet",wallet:"převod do peněženky",robot:"převod do robotického obchodování",manual:"převod do manuálního obchodování"};
 function walletBal(u){var b=+u.settings.capital||0;ledger(u).forEach(function(m){var a=+m.amount||0;if(m.to==="wallet")b+=a;if(m.from==="wallet")b-=a});return Math.round(b*100)/100}
 function stats(u,side){
   var S=u.settings,T=u.transfer;
@@ -547,7 +555,7 @@ function render(){
 }
 /* Nápis XAU/USD zčervená, když má správce ve Správě účtů důležitou zprávu (chybějící obchody od aplikace
    nebo změnu nastavení od jiného uživatele). */
-function hasAlert(){var m=me();return !!(m&&m.isAdmin&&((gapInfo&&gapInfo.gaps&&gapInfo.gaps.length)||DB.users.some(newChange)||DB.users.some(payReq)))}
+function hasAlert(){var m=me();return !!(m&&m.isAdmin&&((gapInfo&&gapInfo.gaps&&gapInfo.gaps.length)||DB.users.some(newChange)||DB.users.some(function(u){return reqs(u).length>0})))}
 function setAlert(){var t=document.querySelector(".scene:not(.authscene) .titleimg");if(t)t.classList.toggle("alert",hasAlert())}
 /* Nápis XAU/USD kreslený jako vektorový neon (ostrý v každé velikosti): rozmazaná záře, barevná linka a světlé jádro */
 /* Obrys písmen je předem převedený z písma Montserrat ExtraBold na jednu křivku bez překrývajících se tahů. */
@@ -824,24 +832,27 @@ function moveTxt(m){var N={wallet:"peněženka",robot:"robot",manual:"manuál",b
 /* pole s částkou převodu a tlačítkem Proveď uvnitř pole */
 function mvField(lab,key,from,to,title,cls,attrs){return '<label class="tile pvf"><span class="k">'+lab+'</span><span class="pvv"><input class="v" type="number" step="any" min="0" data-f="'+key+'" placeholder="0,00"'+(attrs||'')+'><span class="v un">$</span></span>'+
   '<button type="button" class="act'+(cls||'')+'" data-a="move" data-in="'+key+'" data-from="'+from+'" data-to="'+to+'" title="'+title+'">Proveď</button></label>'}
-function bankRow(u){var r=payReq(u);
-  return mvField("Převod na účet","mvBank","wallet","bank","Z peněženky na bankovní účet",r?' go blink':'',r?' value="'+esc(String(r.amount))+'" disabled':'')}
-function payInfo(u){var r=payReq(u),l=u.transfer.payLast;
-  if(r)return '<p class="payinfo wait">Čeká se na potvrzení výběru '+usd(+r.amount)+' od administrátora.</p>';
-  if(l&&l.status==="rej")return '<p class="payinfo rej">Výběr '+usd(+l.amount)+' ze dne '+dmy(new Date(l.t))+' administrátor zamítl.</p>';
-  if(l&&l.status==="ok")return '<p class="payinfo ok">Výběr '+usd(+l.amount)+' administrátor potvrdil '+dmy(new Date(l.done||l.t))+'.</p>';
+/* pole převodu; když na ně čeká žádost, je částka zamčená a Proveď bliká zeleně */
+function mvReqField(u,lab,key,from,to,title){var r=reqOf(u,from,to);
+  return mvField(lab,key,from,to,title,r?' go blink':'',r?' value="'+esc(String(r.amount))+'" disabled':'')}
+function payInfo(u,side){var rel=function(r){return r.from===side||r.to===side||r.to==="bank"};
+  var w=reqs(u).filter(rel).map(function(r){return '<p class="payinfo wait">Čeká se na potvrzení od administrátora: '+REQ_TXT[r.to]+' '+usd(+r.amount)+'.</p>'}).join("");
+  if(w)return w;var l=u.transfer.reqLast;if(!l||!rel(l))return '';
+  var what=REQ_TXT[l.to]||"převod";what=what.charAt(0).toUpperCase()+what.slice(1);
+  if(l.status==="rej")return '<p class="payinfo rej">'+what+' '+usd(+l.amount)+' ze dne '+dmy(new Date(l.t))+' administrátor zamítl.</p>';
+  if(l.status==="ok")return '<p class="payinfo ok">'+what+' '+usd(+l.amount)+' administrátor potvrdil '+dmy(new Date(l.done||l.t))+'.</p>';
   return ''}
 function viewPrev(u,side,st){
   var T=u.transfer,wb=walletBal(u),nm=side==="robot"?"robotického":"manuálního";
   return '<form class="prevf" data-side="'+side+'" novalidate>'+
    '<div class="tiles big pvtiles">'+
-    tile("Peněženka",'<span>'+u1(wb,"$")+'</span>',payReq(u)?'z toho čeká na výběr '+usd(+payReq(u).amount):'')+
-    tile("Investice",'<span class="'+cls(st.pnl)+'">'+u1(st.current,"$")+'</span>')+
-    mvField("Převod z peněženky","mvIn","wallet",side,"Z peněženky do "+nm+" obchodování")+
-    bankRow(u)+
-    mvField("Převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
+    tile("Peněženka",'<span>'+u1(wb,"$")+'</span>',reserved(u,"wallet")?'z toho čeká na převod '+usd(reserved(u,"wallet")):'')+
+    tile("Investice",'<span class="'+cls(st.pnl)+'">'+u1(st.current,"$")+'</span>',reserved(u,side)?'z toho čeká na převod '+usd(reserved(u,side)):'')+
+    mvReqField(u,"Převod z peněženky","mvIn","wallet",side,"Z peněženky do "+nm+" obchodování")+
+    mvReqField(u,"Převod na účet","mvBank","wallet","bank","Z peněženky na bankovní účet")+
+    mvReqField(u,"Převod do peněženky","mvOut",side,"wallet","Z "+nm+" obchodování do peněženky")+
     '<button type="button" class="tile histbtn" data-a="hist" data-side="'+side+'">HISTORIE</button>'+
-   '</div>'+payInfo(u)+
+   '</div>'+payInfo(u,side)+
    '</form>';
 }
 function mixStyle(rp){rp=+rp;
@@ -953,12 +964,12 @@ app.addEventListener("click",function(e){
   if(a==="move"){e.preventDefault();var u=viewed(),inp=t.closest("form").querySelector('[data-f="'+t.dataset.in+'"]'),amt=Math.round(+String(inp?inp.value:"").replace(",",".")*100)/100;
     if(!(amt>0)){toast("Zadejte částku pro převod.");if(inp)inp.focus();return}
     var fr=t.dataset.from,to=t.dataset.to;
-    if(to==="bank"&&payReq(u)){toast("Čeká se na potvrzení výběru "+usd(+payReq(u).amount)+" od administrátora.");return}
-    var avail=fr==="wallet"?walletFree(u):Math.floor(stats(u,fr).current*100)/100;
+    var pr=reqOf(u,fr,to);if(pr){toast("Čeká se na potvrzení od administrátora: "+REQ_TXT[to]+" "+usd(+pr.amount)+".");return}
+    var avail=fr==="wallet"?walletFree(u):Math.floor((stats(u,fr).current-reserved(u,fr))*100)/100;
     if(amt>avail+1e-9){toast("Nedostatek prostředků – k dispozici "+usd(Math.max(0,avail))+".");if(inp)inp.focus();return}
-    /* výběr na účet od uživatele (ne správce) je jen žádost – provede se až po potvrzení správcem */
-    if(to==="bank"&&!me().isAdmin){u.transfer.payReq={t:new Date().toISOString(),amount:amt};u.transfer.payLast=null;persistTransfer(u);renderMain();
-      toast("Žádost o výběr "+usd(amt)+" odeslána – čeká se na potvrzení od administrátora.");return}
+    /* převod od uživatele (ne správce) je jen žádost – provede a přepočítá se až po potvrzení správcem */
+    if(!me().isAdmin){reqs(u).push({t:new Date().toISOString(),from:fr,to:to,amount:amt});u.transfer.reqLast=null;persistTransfer(u);renderMain();
+      toast("Žádost odeslána ("+REQ_TXT[to]+" "+usd(amt)+") – čeká se na potvrzení od administrátora.");return}
     var mv={t:new Date().toISOString(),from:fr,to:to,amount:amt};ledger(u).push(mv);
     /* převod, který provedl jiný uživatel než správce, uvidí správce ve Správě účtů */
     if(!me().isAdmin)u.transfer.lastChange={t:mv.t,kind:"move",from:fr,to:to,amount:amt};
@@ -1005,10 +1016,10 @@ function gapsHTML(){if(!gapInfo||!gapInfo.gaps||!gapInfo.gaps.length)return "";
   return '<div class="chgbox gapbox"><h4>Chybějící manuální obchody</h4><p class="hint">V datech chybí obchody za '+(gapInfo.gaps.length>1?'dny':'den')+' <b>'+gapInfo.gaps.map(function(d){var x=d.split("-");return +x[2]+". "+(+x[1])+". "+x[0]}).join(", ")+
   '</b> (Myfxbook při automatickém stahování vrací jen posledních cca 40 obchodů). Doplníš je tak, že na Myfxbooku stáhneš výpis účtu '+esc(gapInfo.account||"")+' jako CSV a nahraješ ho '+
   '<a href="https://github.com/Golden-Dave/Trading/upload/main/imports" target="_blank" rel="noopener">do složky imports na GitHubu</a> (Commit changes). Obchody se doplní do pár minut a automatické stahování běží dál.</p></div>'}
-function payHTML(){var l=DB.users.filter(payReq);if(!l.length)return "";
-  return '<div class="chgbox"><h4>Žádosti o výběr na účet</h4>'+l.map(function(u){var r=payReq(u),d=new Date(r.t);
-    return '<div class="chgrow"><span><b>'+esc(u.username)+'</b> žádá '+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+' o výběr <b>'+usd(+r.amount)+'</b> z peněženky na účet (v peněžence '+usd(walletBal(u))+').</span>'+
-    '<span class="chgbtns"><button class="chip" data-x="payok" data-id="'+u.id+'">Potvrdit výběr</button><button class="chip" data-x="payrej" data-id="'+u.id+'">Zamítnout</button></span></div>'}).join("")+'</div>'}
+function payHTML(){var rows=[];DB.users.forEach(function(u){reqs(u).forEach(function(r,i){var d=new Date(r.t),src=r.from==="wallet"?'v peněžence '+usd(walletBal(u)):'v obchodování '+usd(stats(u,r.from).current);
+    rows.push('<div class="chgrow"><span><b>'+esc(u.username)+'</b> žádá '+dmy(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())+' o '+REQ_TXT[r.to]+' <b>'+usd(+r.amount)+'</b> ('+moveTxt(r)+'; '+src+').</span>'+
+    '<span class="chgbtns"><button class="chip" data-x="payok" data-id="'+u.id+'" data-i="'+i+'">Potvrdit</button><button class="chip" data-x="payrej" data-id="'+u.id+'" data-i="'+i+'">Zamítnout</button></span></div>')})});
+  return rows.length?'<div class="chgbox"><h4>Žádosti o převod</h4>'+rows.join("")+'</div>':""}
 function changesHTML(){var l=DB.users.filter(newChange);if(!l.length)return "";
   return '<div class="chgbox"><h4>Změny nastavení</h4>'+l.map(function(u){return '<div class="chgrow"><span>'+changeText(u)+'</span><button class="chip" data-x="ack" data-id="'+u.id+'">Beru na vědomí</button></div>'}).join("")+'</div>'}
 function renderAcct(){
@@ -1162,11 +1173,14 @@ async function adminClick(e){
   if(x==="pw"){adminOpen=false;return renderPw()}
   if(x==="logout")return logout();
   if(x==="sel"){adminSel=b.dataset.id;return renderAdmin()}
-  if(x==="payok"||x==="payrej"){var pu=DB.users.find(function(u){return u.id===b.dataset.id}),r=pu&&payReq(pu);
-    if(r){var now=new Date().toISOString();
-      if(x==="payok"){if(+r.amount>walletBal(pu)+1e-9){toast("V peněžence uživatele je jen "+usd(walletBal(pu))+".");return}ledger(pu).push({t:now,from:"wallet",to:"bank",amount:+r.amount})}
-      pu.transfer.payLast={t:r.t,amount:+r.amount,status:x==="payok"?"ok":"rej",done:now};pu.transfer.payReq=null;persistTransfer(pu);
-      toast(x==="payok"?"Výběr "+usd(+r.amount)+" potvrzen.":"Výběr zamítnut.")}
+  if(x==="payok"||x==="payrej"){var pu=DB.users.find(function(u){return u.id===b.dataset.id}),ri=+b.dataset.i,r=pu&&reqs(pu)[ri];
+    if(r){var now=new Date().toISOString(),amt=+r.amount;
+      if(x==="payok"){var av=r.from==="wallet"?walletBal(pu):stats(pu,r.from).current;
+        if(amt>av+1e-9){toast((r.from==="wallet"?"V peněžence uživatele je jen ":"V obchodování uživatele je jen ")+usd(av)+".");return}
+        /* převod se provede k času potvrzení – od něj se počítá s novými zůstatky */
+        ledger(pu).push({t:now,from:r.from,to:r.to,amount:amt})}
+      pu.transfer.reqLast={t:r.t,from:r.from,to:r.to,amount:amt,status:x==="payok"?"ok":"rej",done:now};reqs(pu).splice(ri,1);persistTransfer(pu);
+      toast(x==="payok"?"Převod "+usd(amt)+" potvrzen ("+moveTxt(r)+").":"Žádost zamítnuta.")}
     renderAdmin();renderMain();return setAlert()}
   if(x==="ack"){var au=DB.users.find(function(u){return u.id===b.dataset.id});if(au&&au.transfer.lastChange){au.transfer.changeAck=au.transfer.lastChange.t;persistTransfer(au)}renderAdmin();return setAlert()}
   if(x==="view"){viewId=sel.id===me().id?null:sel.id;return closeOv()}
